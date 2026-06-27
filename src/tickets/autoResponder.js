@@ -2,40 +2,43 @@ const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const config = require('../config/client');
 const { createEmbed } = require('../utils/embeds');
 const logger = require('../config/logger');
+const i18n = require('../i18n');
 
 const ANSWERS = new Map();
+const HUMAN_KEYWORDS = ['human', 'staff', 'person', 'agent', 'real person', 'człowiek', 'personel', 'humano', 'persona real'];
 
-async function startAutoResponse(channel, member, type, ticketId) {
+async function startAutoResponse(channel, member, type, ticketId, userId = null) {
+  const effectiveUserId = userId || member.id;
   const typeName = getTicketTypeName(type);
-  const questions = config.ticket.questions[type];
+  const questions = i18n.getQuestions(type, effectiveUserId);
 
-  // Professional welcome
   await channel.send({
     embeds: [createEmbed({
-      title: `👋 Welcome to ${typeName}`,
-      description:
-        `Hello ${member}, thank you for reaching out. I'm the CloudFFA support assistant and I'll help you get started.\n\n` +
-        'I need to ask you a few questions to better understand your situation. Please answer each question one at a time, and I will review your responses as we go.',
+      title: i18n.t('auto.welcome.title', effectiveUserId, { type: typeName }),
+      description: i18n.t('auto.welcome.desc', effectiveUserId, { member }),
       color: config.embed.color.primary,
-      fields: questions
+      fields: questions && questions.length > 0
         ? [
             {
-              name: '📝 Questions',
-              value: `You have **${questions.length} question${questions.length > 1 ? 's' : ''}** to answer. I'll guide you through each one.`,
+              name: i18n.t('auto.welcome.field_questions', effectiveUserId),
+              value: i18n.t('auto.welcome.field_questions_value', effectiveUserId, {
+                count: questions.length,
+                plural: questions.length > 1 ? 's' : '',
+              }),
             },
             {
-              name: '⏱ Time Limit',
-              value: 'You have **5 minutes** per question. If you need more time, just let me know.',
+              name: i18n.t('auto.welcome.field_time', effectiveUserId),
+              value: i18n.t('auto.welcome.field_time_value', effectiveUserId),
             },
           ]
         : [],
-      footerText: 'I am an automated assistant. Type "human" anytime to speak with staff.',
+      footerText: i18n.t('auto.welcome.footer', effectiveUserId),
     })],
     components: [
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`ticket_escalate_${ticketId}`)
-          .setLabel('Speak to Staff')
+          .setLabel(i18n.t('auto.button.speak_staff', effectiveUserId))
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🙋')
       ),
@@ -45,47 +48,56 @@ async function startAutoResponse(channel, member, type, ticketId) {
   if (!questions || questions.length === 0) {
     await channel.send({
       embeds: [createEmbed({
-        title: '📬 Ticket Created',
-        description: `Your **${typeName}** ticket has been created. A staff member will be with you shortly.\n\nIf you need immediate assistance, click the button below.`,
+        title: i18n.t('auto.no_questions.title', effectiveUserId),
+        description: i18n.t('auto.no_questions.desc', effectiveUserId, { type: typeName }),
         color: config.embed.color.success,
       })],
-      components: [buildEscalateButtons(ticketId)],
+      components: [buildEscalateButtons(ticketId, effectiveUserId)],
     });
     return;
   }
 
   await new Promise((r) => setTimeout(r, 1500));
   ANSWERS.set(ticketId, []);
-  await askNextQuestion(channel, member, type, ticketId, questions, 0);
+  await askNextQuestion(channel, member, type, ticketId, questions, 0, effectiveUserId);
 }
 
-async function askNextQuestion(channel, member, type, ticketId, questions, index) {
+async function askNextQuestion(channel, member, type, ticketId, questions, index, userId) {
   if (index >= questions.length) {
-    return finishAutoResponse(channel, member, type, ticketId);
+    return finishAutoResponse(channel, member, type, ticketId, userId);
   }
 
   const question = questions[index];
   const qNum = index + 1;
 
+  const fields = [];
+
+  if (type === 'ban_appeal' && index === 0) {
+    fields.push({
+      name: i18n.t('auto.question.tip_ban', userId),
+      value: i18n.t('auto.question.tip_ban_value', userId),
+    });
+  } else {
+    fields.push({
+      name: i18n.t('auto.question.instructions', userId),
+      value: i18n.t('auto.question.instructions_value', userId),
+    });
+  }
+
+  if (index > 0 && index % 2 === 0) {
+    fields.push({
+      name: '💪 Almost there',
+      value: i18n.t('auto.response.followup_encourage', userId),
+    });
+  }
+
   await channel.send({
     embeds: [createEmbed({
-      title: `📌 Question ${qNum} of ${questions.length}`,
-      description: `> ${question}`,
+      title: i18n.t('auto.question.title', userId, { num: qNum, total: questions.length }),
+      description: i18n.t('auto.question.desc', userId, { question }),
       color: config.embed.color.warning,
-      fields: type === 'ban_appeal' && index === 0
-        ? [
-            {
-              name: '💡 Tip',
-              value: 'If you have a **Ban ID** or **User ID** from your ban notification, include it in your answer so I can look up the details.',
-            },
-          ]
-        : [
-            {
-              name: '💬 Instructions',
-              value: `Please type your answer below. You have **5 minutes**.`,
-            },
-          ],
-      footerText: `Question ${qNum} of ${questions.length}`,
+      fields,
+      footerText: i18n.t('auto.question.footer', userId, { num: qNum, total: questions.length }),
     })],
   });
 
@@ -100,22 +112,71 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     const answer = collected.first();
     const answerText = answer.content;
 
+    // Check if user is asking for human staff
+    if (HUMAN_KEYWORDS.some((kw) => answerText.toLowerCase().includes(kw))) {
+      await channel.send({
+        embeds: [createEmbed({
+          title: '🙋 Transferring to Staff',
+          description: 'I understand you\'d like to speak with a real person. I\'ll notify our staff team right away.\n\nYour answers so far have been saved and will be shared with them.',
+          color: config.embed.color.warning,
+        })],
+      });
+
+      const staffRoleId = config.ticket.staffRoleId;
+      if (staffRoleId) {
+        await channel.send({
+          content: `<@&${staffRoleId}> — ${member} is requesting to speak with a human staff member.`,
+        });
+      }
+
+      const answers = ANSWERS.get(ticketId) || [];
+      answers.push({ question, answer: answerText });
+      ANSWERS.set(ticketId, answers);
+      return;
+    }
+
     const answers = ANSWERS.get(ticketId) || [];
     answers.push({ question, answer: answerText });
     ANSWERS.set(ticketId, answers);
 
-    // Professional contextual response based on their answer
-    const response = generateProfessionalResponse(answerText, type, question, index, answers, questions.length);
+    // Enhanced contextual response based on their answer
+    const response = await generateProfessionalResponse(answerText, type, question, index, answers, questions.length, userId);
     await channel.send({ embeds: [response] });
 
-    // Check for ban ID in any answer for ban appeals
+    // Send a follow-up encouragement message for longer conversations
+    if (index > 1 && answerText.length > 50 && index % 2 === 1) {
+      await new Promise((r) => setTimeout(r, 800));
+      await channel.send({
+        embeds: [createEmbed({
+          title: '💬 Thank you for the details',
+          description: i18n.t('auto.response.followup_positive', userId),
+          color: config.embed.color.primary,
+        })],
+      });
+    }
+
+    // Check for evidence mentions
+    const evidenceKeywords = ['evidence', 'screenshot', 'proof', 'dowód', 'screen', 'prueba', 'captura'];
+    const hasEvidence = evidenceKeywords.some((kw) => answerText.toLowerCase().includes(kw));
+    if (hasEvidence && (type === 'bug_report' || type === 'player_report')) {
+      await new Promise((r) => setTimeout(r, 800));
+      await channel.send({
+        embeds: [createEmbed({
+          title: '📎 Evidence Noted',
+          description: i18n.t('auto.response.followup_evidence', userId),
+          color: config.embed.color.success,
+        })],
+      });
+    }
+
+    // Ban appeal specific: check for ban ID
     if (type === 'ban_appeal') {
       const banId = extractBanId(answerText);
       if (banId) {
         await channel.send({
           embeds: [createEmbed({
-            title: '🔍 Checking ban records...',
-            description: `I found a potential Ban ID in your response: \`${banId}\`. Let me check our records.`,
+            title: i18n.t('auto.ban.checking_title', userId),
+            description: i18n.t('auto.ban.checking_desc', userId, { banId }),
             color: config.embed.color.primary,
           })],
         });
@@ -124,109 +185,172 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
         if (banInfo) {
           await channel.send({
             embeds: [createEmbed({
-              title: '📋 Ban Record Found',
-              description:
-                `**User:** ${banInfo.user.tag} \`(${banInfo.user.id})\`\n` +
-                `**Reason:** ${banInfo.reason || 'No reason recorded'}\n` +
-                `**Status:** Currently banned\n\n` +
-                `This information will be included with your appeal for the staff team to review.`,
+              title: i18n.t('auto.ban.found_title', userId),
+              description: i18n.t('auto.ban.found_desc', userId, {
+                tag: banInfo.user.tag,
+                id: banInfo.user.id,
+                reason: banInfo.reason || 'No reason recorded',
+              }),
               color: config.embed.color.success,
-              footerText: 'You can continue answering questions below.',
+              footerText: i18n.t('auto.ban.found_footer', userId),
             })],
           });
         } else {
           await channel.send({
             embeds: [createEmbed({
-              title: '❌ Ban Not Found',
-              description:
-                `I couldn't find a ban matching \`${banId}\`. This could mean:\n` +
-                `• The ID may be incorrect\n` +
-                `• The ban may have already been removed\n` +
-                `• This ID might be something else entirely\n\n` +
-                `Don't worry — our staff will be able to look into this further. Please continue with your answers.`,
+              title: i18n.t('auto.ban.not_found_title', userId),
+              description: i18n.t('auto.ban.not_found_desc', userId, { banId }),
               color: config.embed.color.error,
             })],
           });
         }
       }
 
-      // Also check for denial phrases
-      const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake'];
+      const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
       const isDenial = denialPhrases.some((p) => answerText.toLowerCase().includes(p));
-      if (isDenial && !banId) {
+      if (isDenial && index < questions.length - 1) {
         await channel.send({
           embeds: [createEmbed({
-            title: '🤝 I understand your concern',
-            description:
-              'I understand you feel this ban may have been issued in error. Our staff team will carefully review all the evidence when processing your appeal.\n\n' +
-              'In the meantime, please continue answering the remaining questions so we have a complete picture of your situation.',
+            title: i18n.t('auto.ban.denial_title', userId),
+            description: i18n.t('auto.ban.denial_desc', userId),
             color: config.embed.color.primary,
-            footerText: 'Honesty is the best approach for a successful appeal.',
+            footerText: i18n.t('auto.ban.denial_footer', userId),
           })],
         });
       }
     }
 
-    // Brief confirmation before next question
+    // Brief pause then next question
     await new Promise((r) => setTimeout(r, 1000));
-    await askNextQuestion(channel, member, type, ticketId, questions, index + 1);
+    await askNextQuestion(channel, member, type, ticketId, questions, index + 1, userId);
   } catch {
     await channel.send({
       embeds: [createEmbed({
-        title: '⏰ Time Expired',
-        description:
-          'The time limit for answering has passed. Your answers so far have been saved and will be reviewed by our staff team.\n\n' +
-          'If you still need help, click the button below to request staff assistance.',
+        title: i18n.t('auto.question.time_expired_title', userId),
+        description: i18n.t('auto.question.time_expired_desc', userId),
         color: config.embed.color.warning,
       })],
-      components: [buildEscalateButtons(ticketId)],
+      components: [buildEscalateButtons(ticketId, userId)],
     });
   }
 }
 
-function generateProfessionalResponse(answerText, type, question, questionIndex, answers, totalQuestions) {
+async function generateProfessionalResponse(answerText, type, question, questionIndex, answers, totalQuestions, userId) {
   const lower = answerText.toLowerCase();
 
+  // Check for negative/emotional responses
   if (isNegativeResponse(lower)) {
     return createEmbed({
-      title: '✅ Thank you for sharing',
-      description:
-        'I appreciate you being honest about how you feel. Your perspective is valuable and will be reviewed as part of your case.\n\n' +
-        'Please continue with the remaining questions so we can gather all the necessary information.',
+      title: i18n.t('auto.response.negative_title', userId),
+      description: i18n.t('auto.response.negative_desc', userId),
       color: config.embed.color.primary,
     });
   }
 
+  // Very short answers
   if (answerText.length < 3) {
     return createEmbed({
-      title: '📝 Answer recorded',
-      description: 'Thank you. I\'ve noted your response. Please take your time with the next question — providing detailed information helps us process your case more effectively.',
+      title: i18n.t('auto.response.short_title', userId),
+      description: i18n.t('auto.response.short_desc', userId),
       color: config.embed.color.success,
     });
   }
 
-  if (/i (don't|do not) know/i.test(lower) || /not sure/i.test(lower)) {
+  // Unsure answers
+  if (/i (don't|do not) know/i.test(lower) || /not sure/i.test(lower) ||
+      /nie wiem/i.test(lower) || /no sé/i.test(lower) || /no estoy seguro/i.test(lower)) {
     return createEmbed({
-      title: '📝 That\'s okay',
-      description: 'No worries. Just provide whatever information you can remember. If anything else comes to mind later, you can share it freely in this channel.',
+      title: i18n.t('auto.response.unsure_title', userId),
+      description: i18n.t('auto.response.unsure_desc', userId),
       color: config.embed.color.primary,
     });
   }
 
+  // Short answers (3-20 chars) — prompt for more
+  if (answerText.length < 20) {
+    return createEmbed({
+      title: i18n.t('auto.response.short_title', userId),
+      description: `${i18n.t('auto.response.short_desc', userId)}\n\n${i18n.t('auto.response.followup_short', userId)}`,
+      color: config.embed.color.success,
+      fields: [
+        {
+          name: i18n.t('auto.response.field_progress', userId),
+          value: i18n.t('auto.response.field_progress_value', userId, {
+            answered: answers.length,
+            total: totalQuestions,
+            remaining: totalQuestions - answers.length,
+          }),
+          inline: true,
+        },
+      ],
+    });
+  }
+
+  // Answers mentioning ban-related terms in ban appeal
+  if (type === 'ban_appeal' && (lower.includes('ban') || lower.includes('appeal') || lower.includes('unban'))) {
+    return createEmbed({
+      title: i18n.t('auto.response.normal_title', userId),
+      description: `${i18n.t('auto.response.normal_desc', userId)}\n\n${i18n.t('auto.response.followup_ban', userId)}`,
+      color: config.embed.color.success,
+      fields: [
+        {
+          name: i18n.t('auto.response.field_progress', userId),
+          value: i18n.t('auto.response.field_progress_value', userId, {
+            answered: answers.length,
+            total: totalQuestions,
+            remaining: totalQuestions - answers.length,
+          }),
+          inline: true,
+        },
+      ],
+      footerText: i18n.t('auto.response.footer', userId),
+    });
+  }
+
+  // Detailed answers
+  if (answerText.length > 100) {
+    return createEmbed({
+      title: i18n.t('auto.response.normal_title', userId),
+      description: `${i18n.t('auto.response.normal_desc', userId)}\n\n${i18n.t('auto.response.followup_positive', userId)}`,
+      color: config.embed.color.success,
+      fields: [
+        {
+          name: i18n.t('auto.response.field_progress', userId),
+          value: i18n.t('auto.response.field_progress_value', userId, {
+            answered: answers.length,
+            total: totalQuestions,
+            remaining: totalQuestions - answers.length,
+          }),
+          inline: true,
+        },
+      ],
+      footerText: i18n.t('auto.response.footer', userId),
+    });
+  }
+
+  // Normal answer
   const remaining = totalQuestions - answers.length;
 
+  const desc = remaining <= 2
+    ? 'Thank you for your response! We\'re almost done — just a couple more questions to go.'
+    : i18n.t('auto.response.normal_desc', userId);
+
   return createEmbed({
-    title: '📝 Answer received',
-    description: 'Thank you for your response. I have recorded your answer and we are making progress.',
+    title: i18n.t('auto.response.normal_title', userId),
+    description: desc,
     color: config.embed.color.success,
     fields: [
       {
-        name: '📊 Progress',
-        value: `Answered **${answers.length}** of **${totalQuestions}** (${remaining} remaining)`,
+        name: i18n.t('auto.response.field_progress', userId),
+        value: i18n.t('auto.response.field_progress_value', userId, {
+          answered: answers.length,
+          total: totalQuestions,
+          remaining,
+        }),
         inline: true,
       },
     ],
-    footerText: 'Providing detailed answers helps resolve your case faster.',
+    footerText: i18n.t('auto.response.footer', userId),
   });
 }
 
@@ -243,11 +367,18 @@ function isNegativeResponse(text) {
     /wrongful/i,
     /i want to be unbanned/i,
     /lift my ban/i,
+    /nie zrobiłem/i,
+    /niesłusznie/i,
+    /fałszywe/i,
+    /soy inocente/i,
+    /no hice nada/i,
+    /injusto/i,
+    /falso/i,
   ];
   return patterns.some((p) => p.test(text));
 }
 
-async function finishAutoResponse(channel, member, type, ticketId) {
+async function finishAutoResponse(channel, member, type, ticketId, userId) {
   const answers = ANSWERS.get(ticketId) || [];
   const typeName = getTicketTypeName(type);
 
@@ -257,37 +388,33 @@ async function finishAutoResponse(channel, member, type, ticketId) {
 
   await channel.send({
     embeds: [createEmbed({
-      title: `📋 ${typeName} — Summary of Your Case`,
-      description:
-        `Thank you for answering all the questions, ${member}. Here is a summary of what you shared:\n\n${summaryLines.join('\n\n')}`,
+      title: i18n.t('auto.summary.title', userId, { type: typeName }),
+      description: i18n.t('auto.summary.desc', userId, {
+        member,
+        answers: summaryLines.join('\n\n'),
+      }),
       color: config.embed.color.success,
-      footerText: 'Please review the above. If anything is incorrect, feel free to correct it.',
+      footerText: i18n.t('auto.summary.footer', userId),
     })],
   });
 
-  await sendAutoHelp(channel, member, type, answers, ticketId);
+  await sendAutoHelp(channel, member, type, answers, ticketId, userId);
 
   await new Promise((r) => setTimeout(r, 1000));
 
   await channel.send({
     embeds: [createEmbed({
-      title: '✅ All Set',
-      description:
-        'I have recorded all of your responses. Here is what happens next:\n\n' +
-        '• Your case has been logged in our system\n' +
-        '• A staff member will review it as soon as possible\n' +
-        '• You will be notified here when there is an update\n\n' +
-        '**If you need immediate assistance**, click the button below to request a staff member.\n' +
-        '**If you are satisfied**, you can close the ticket using the button at the top of this channel.',
+      title: i18n.t('auto.finish.title', userId),
+      description: i18n.t('auto.finish.desc', userId),
       color: config.embed.color.primary,
     })],
-    components: [buildEscalateButtons(ticketId)],
+    components: [buildEscalateButtons(ticketId, userId)],
   });
 
   ANSWERS.delete(ticketId);
 }
 
-async function sendAutoHelp(channel, member, type, answers, ticketId) {
+async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
   const typeName = getTicketTypeName(type);
 
   switch (type) {
@@ -296,25 +423,19 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
         a.question.toLowerCase().includes('why') || a.question.toLowerCase().includes('lifted')
       );
 
+      const reasonStr = reason
+        ? `📌 You mentioned: "${reason.answer.substring(0, 200)}${reason.answer.length > 200 ? '...' : ''}"`
+        : '';
+
       await channel.send({
         embeds: [createEmbed({
-          title: '🔨 Ban Appeal — What Happens Next',
-          description:
-            'Thank you for submitting your ban appeal. Here is the process:\n\n' +
-            '**1. Review** — A staff member will review your appeal and the reason for your ban\n' +
-            '**2. Decision** — You will receive a response: Approved or Denied\n' +
-            '**3. Resolution** — If approved, your ban will be lifted\n\n' +
-            '**Tips for a successful appeal:**\n' +
-            '• Be honest and take responsibility where appropriate\n' +
-            '• Show that you understand the rule that was broken\n' +
-            '• Explain what you will do differently in the future\n\n' +
-            `${reason ? `📌 You mentioned: "${reason.answer.substring(0, 200)}${reason.answer.length > 200 ? '...' : ''}"` : ''}\n\n` +
-            '⏱ Response time is typically within **24 hours**.',
+          title: i18n.t('auto.help.ban_appeal.title', userId),
+          description: i18n.t('auto.help.ban_appeal.desc', userId, { reason: reasonStr }),
           color: config.embed.color.primary,
           fields: [
             {
-              name: '📌 Important',
-              value: 'Repeatedly pinging staff or creating multiple tickets may negatively affect your appeal.',
+              name: i18n.t('auto.help.ban_appeal.field_important', userId),
+              value: i18n.t('auto.help.ban_appeal.field_important_value', userId),
             },
           ],
         })],
@@ -325,18 +446,8 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
     case 'bug_report': {
       await channel.send({
         embeds: [createEmbed({
-          title: '🐛 Bug Report — Next Steps',
-          description:
-            'Thank you for reporting this bug. Your report helps us improve the server.\n\n' +
-            '**What happens next:**\n' +
-            '• Your report is logged in our system\n' +
-            '• Our team will attempt to reproduce the bug\n' +
-            '• If confirmed, it will be added to our fix queue\n\n' +
-            '**To help us resolve this faster:**\n' +
-            '• If you have screenshots or video, please share them here\n' +
-            '• Note whether this happens consistently or randomly\n' +
-            '• Mention any steps we can follow to reproduce it\n\n' +
-            'You will be updated here once we have more information.',
+          title: i18n.t('auto.help.bug_report.title', userId),
+          description: i18n.t('auto.help.bug_report.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -346,16 +457,8 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
     case 'player_report': {
       await channel.send({
         embeds: [createEmbed({
-          title: '👤 Player Report — Process',
-          description:
-            'Thank you for submitting your report. Here is how it will be handled:\n\n' +
-            '**1. Review** — A moderator will review the evidence provided\n' +
-            '**2. Investigation** — The reported player may be contacted\n' +
-            '**3. Action** — If rules were broken, appropriate action will be taken\n\n' +
-            '⚠️ **Please note:**\n' +
-            '• False reports may result in action against your account\n' +
-            '• Do not share this report in public channels\n' +
-            '• You will be notified of the outcome',
+          title: i18n.t('auto.help.player_report.title', userId),
+          description: i18n.t('auto.help.player_report.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -365,13 +468,8 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
     case 'general_support': {
       await channel.send({
         embeds: [createEmbed({
-          title: '❓ General Support — Resources',
-          description:
-            'Thank you for reaching out. While you wait for a staff member, here are resources that may help:\n\n' +
-            '📖 **Check the FAQ** — Common questions are answered in our FAQ channel\n' +
-            '🔍 **Search the documentation** — Visit our website or documentation\n' +
-            '💬 **Community help** — Other members may be able to assist\n\n' +
-            'If you still need help after checking these, staff will be with you shortly.',
+          title: i18n.t('auto.help.general_support.title', userId),
+          description: i18n.t('auto.help.general_support.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -381,13 +479,8 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
     case 'purchase_support': {
       await channel.send({
         embeds: [createEmbed({
-          title: '💳 Purchase Support — Next Steps',
-          description:
-            'Thank you for contacting purchase support. To help us assist you, please have the following ready:\n\n' +
-            '• Your **transaction ID** or receipt number\n' +
-            '• The **email** used for the purchase\n' +
-            '• The **product or service** you purchased\n\n' +
-            'Our team will verify your purchase and work to resolve the issue. You will be updated in this channel.',
+          title: i18n.t('auto.help.purchase_support.title', userId),
+          description: i18n.t('auto.help.purchase_support.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -397,9 +490,8 @@ async function sendAutoHelp(channel, member, type, answers, ticketId) {
     default: {
       await channel.send({
         embeds: [createEmbed({
-          title: `ℹ️ ${typeName} — Information Received`,
-          description:
-            'Your information has been recorded and will be reviewed by our team. Please wait for a staff member to respond.',
+          title: i18n.t('auto.help.default.title', userId, { type: typeName }),
+          description: i18n.t('auto.help.default.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -452,16 +544,16 @@ function getTicketTypeName(type) {
   return typeMap[type] || type;
 }
 
-function buildEscalateButtons(ticketId) {
+function buildEscalateButtons(ticketId, userId = null) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`ticket_escalate_${ticketId}`)
-      .setLabel('Request Staff')
+      .setLabel(i18n.t('auto.button.request_staff', userId))
       .setStyle(ButtonStyle.Danger)
       .setEmoji('🙋'),
     new ButtonBuilder()
       .setCustomId(`ticket_resolved_${ticketId}`)
-      .setLabel("I'm All Set")
+      .setLabel(i18n.t('auto.button.im_all_set', userId))
       .setStyle(ButtonStyle.Success)
       .setEmoji('✅')
   );

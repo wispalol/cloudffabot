@@ -14,12 +14,10 @@ const { createEmbed, successEmbed, errorEmbed } = require('../utils/embeds');
 const { getTicketTypeName, getTicketTypeEmoji, sanitizeChannelName } = require('../utils/helpers');
 const { generateTranscript } = require('../utils/transcript');
 const { startAutoResponse } = require('./autoResponder');
+const i18n = require('../i18n');
 const path = require('path');
 const fs = require('fs');
 
-/**
- * Ticket types and their display labels / emojis.
- */
 const TICKET_TYPES = [
   { value: 'ban_appeal', label: 'Ban Appeal', emoji: '🔨' },
   { value: 'bug_report', label: 'Bug Report', emoji: '🐛' },
@@ -28,28 +26,22 @@ const TICKET_TYPES = [
   { value: 'purchase_support', label: 'Purchase Support', emoji: '💳' },
 ];
 
-/**
- * Sends the ticket panel to the specified channel.
- * The panel contains a dropdown for selecting the ticket type.
- */
 async function sendTicketPanel(channel) {
   const embed = createEmbed({
-    title: `${config.emoji.ticket} Ticket System`,
-    description:
-      'Select a ticket type from the dropdown below to get started.\n' +
-      'Please do not create duplicate tickets — staff will respond as soon as possible.',
+    title: i18n.t('ticket.panel.title'),
+    description: i18n.t('ticket.panel.description'),
     color: config.embed.color.primary,
     fields: TICKET_TYPES.map((t) => ({
       name: `${t.emoji} ${t.label}`,
       value: `Open a **${t.label}** ticket`,
       inline: true,
     })),
-    footerText: 'Select an option below',
+    footerText: i18n.t('ticket.panel.footer'),
   });
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('ticket_create')
-    .setPlaceholder('Choose a ticket type...')
+    .setPlaceholder(i18n.t('ticket.panel.select_placeholder'))
     .addOptions(
       TICKET_TYPES.map((t) => ({
         label: t.label,
@@ -63,21 +55,17 @@ async function sendTicketPanel(channel) {
   await channel.send({ embeds: [embed], components: [row] });
 }
 
-/**
- * Handles a user selecting a ticket type from the dropdown.
- * Checks for existing open tickets of the same type, then creates the channel.
- */
 async function handleTicketCreate(interaction) {
   const type = interaction.values[0];
   const guild = interaction.guild;
   const member = interaction.member;
   const categoryId = config.ticket.categoryId;
+  const creatorId = member.id;
 
-  // Check for duplicate open ticket of the same type
   const { get, run } = getDb();
   const existing = get(
     `SELECT channel_id FROM tickets WHERE creator_id = ? AND guild_id = ? AND type = ? AND status = 'open'`,
-    [member.id, guild.id, type]
+    [creatorId, guild.id, type]
   );
 
   if (existing) {
@@ -86,13 +74,15 @@ async function handleTicketCreate(interaction) {
       return interaction.reply({
         embeds: [
           errorEmbed(
-            `You already have an open **${getTicketTypeName(type)}** ticket: ${existingChannel}. Please wait for staff to respond.`
+            i18n.t('ticket.error.duplicate', creatorId, {
+              type: getTicketTypeName(type),
+              channel: existingChannel,
+            })
           ),
         ],
         ephemeral: true,
       });
     }
-    // Channel no longer exists — mark as closed in DB
     run(`UPDATE tickets SET status = 'closed' WHERE channel_id = ?`, [existing.channel_id]);
   }
 
@@ -141,65 +131,62 @@ async function handleTicketCreate(interaction) {
       permissionOverwrites: overwrites,
     });
 
-    // Store in database
     run(
       `INSERT INTO tickets (ticket_id, channel_id, guild_id, creator_id, type, status) VALUES (?, ?, ?, ?, ?, 'open')`,
       [ticketId, ticketChannel.id, guild.id, member.id, type]
     );
 
-    // Send initial embed with questions
     const typeName = getTicketTypeName(type);
     const typeEmoji = getTicketTypeEmoji(type);
-    const questions = config.ticket.questions[type] || ['Please describe your issue.'];
+    const questions = i18n.getQuestions(type, creatorId);
 
     const questionsStr = questions
       .map((q, i) => `**${i + 1}.** ${q}`)
       .join('\n');
 
     const initialEmbed = createEmbed({
-      title: `${typeEmoji} ${typeName} Ticket`,
-      description: `Welcome, ${member}! Please provide the following information so staff can assist you:\n\n${questionsStr}`,
+      title: i18n.t('ticket.create.initial_title', creatorId, { emoji: typeEmoji, type: typeName }),
+      description: `${i18n.t('ticket.create.initial_desc', creatorId, { member })}\n\n${questionsStr}`,
       color: config.embed.color.primary,
       fields: [
         {
-          name: 'Ticket ID',
+          name: i18n.t('ticket.create.field_ticket_id', creatorId),
           value: `\`${ticketId}\``,
           inline: true,
         },
         {
-          name: 'Status',
-          value: '🔴 Open',
+          name: i18n.t('ticket.create.field_status', creatorId),
+          value: i18n.t('ticket.create.status_open', creatorId),
           inline: true,
         },
       ],
       timestamp: new Date(),
     });
 
-    // Action buttons for the ticket
     const buttons = [
       new ButtonBuilder()
         .setCustomId(`ticket_close_${ticketId}`)
-        .setLabel('Close Ticket')
+        .setLabel(i18n.t('ticket_button.close', creatorId))
         .setStyle(ButtonStyle.Danger)
         .setEmoji('🔒'),
       new ButtonBuilder()
         .setCustomId(`ticket_claim_${ticketId}`)
-        .setLabel('Claim Ticket')
+        .setLabel(i18n.t('ticket_button.claim', creatorId))
         .setStyle(ButtonStyle.Primary)
         .setEmoji('🙋'),
       new ButtonBuilder()
         .setCustomId(`ticket_add_${ticketId}`)
-        .setLabel('Add User')
+        .setLabel(i18n.t('ticket_button.add', creatorId))
         .setStyle(ButtonStyle.Success)
         .setEmoji('➕'),
       new ButtonBuilder()
         .setCustomId(`ticket_remove_${ticketId}`)
-        .setLabel('Remove User')
+        .setLabel(i18n.t('ticket_button.remove', creatorId))
         .setStyle(ButtonStyle.Danger)
         .setEmoji('➖'),
       new ButtonBuilder()
         .setCustomId(`ticket_rename_${ticketId}`)
-        .setLabel('Rename')
+        .setLabel(i18n.t('ticket_button.rename', creatorId))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('✏️'),
     ];
@@ -209,17 +196,17 @@ async function handleTicketCreate(interaction) {
     const buttons2 = [
       new ButtonBuilder()
         .setCustomId(`ticket_transcript_${ticketId}`)
-        .setLabel('Transcript')
+        .setLabel(i18n.t('ticket_button.transcript', creatorId))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('📄'),
       new ButtonBuilder()
         .setCustomId(`ticket_reopen_${ticketId}`)
-        .setLabel('Reopen')
+        .setLabel(i18n.t('ticket_button.reopen', creatorId))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🔓'),
       new ButtonBuilder()
         .setCustomId(`ticket_delete_${ticketId}`)
-        .setLabel('Delete')
+        .setLabel(i18n.t('ticket_button.delete', creatorId))
         .setStyle(ButtonStyle.Danger)
         .setEmoji('🗑️'),
     ];
@@ -227,8 +214,8 @@ async function handleTicketCreate(interaction) {
     const row2 = new ActionRowBuilder().addComponents(buttons2);
 
     const pingContent = config.ticket.staffRoleId
-      ? `<@&${config.ticket.staffRoleId}> — New ${typeName} ticket from ${member}`
-      : `New ${typeName} ticket from ${member}`;
+      ? i18n.t('ticket.create.ping', null, { roleId: config.ticket.staffRoleId, type: typeName, member })
+      : i18n.t('ticket.create.ping_no_role', null, { type: typeName, member });
 
     await ticketChannel.send({
       content: pingContent,
@@ -236,8 +223,7 @@ async function handleTicketCreate(interaction) {
       components: [row1, row2],
     });
 
-    // Log ticket creation
-    await logTicketAction(guild, 'Ticket Created', {
+    await logTicketAction(guild, i18n.t('ticket.log.created'), {
       ticketId,
       type: typeName,
       creator: member.user,
@@ -245,44 +231,37 @@ async function handleTicketCreate(interaction) {
     });
 
     await interaction.editReply({
-      embeds: [successEmbed(`Your **${typeName}** ticket has been created: ${ticketChannel}`)],
+      embeds: [successEmbed(i18n.t('ticket.create.success', creatorId, { type: typeName, channel: ticketChannel }))],
     });
 
-    // Start automated help flow
-    startAutoResponse(ticketChannel, member, type, ticketId).catch((err) =>
+    startAutoResponse(ticketChannel, member, type, ticketId, creatorId).catch((err) =>
       logger.error('Auto-responder error:', err)
     );
 
-    // Set up inactivity timer for auto-close
     scheduleInactivityCheck(ticketChannel, ticketId);
   } catch (error) {
     logger.error('Failed to create ticket:', error);
     await interaction.editReply({
-      embeds: [errorEmbed('Failed to create ticket. Please try again later.')],
+      embeds: [errorEmbed(i18n.t('ticket.error.create_failed', creatorId))],
     });
   }
 }
 
-/**
- * Handles ticket button interactions (close, claim, add, remove, rename, etc.)
- */
 async function handleTicketButton(interaction) {
   const customId = interaction.customId;
-  const [action, ticketId] = customId.split('_').slice(1).join('_').split('_');
-  // Actually: customId format is ticket_action_ticketId
-  // Let's parse properly:
   const parts = customId.split('_');
   const actionName = parts[1];
   const ticketIdValue = parts.slice(2).join('_');
-
-  const channel = interaction.channel;
   const member = interaction.member;
   const { get } = getDb();
 
   const ticket = get(`SELECT * FROM tickets WHERE ticket_id = ?`, [ticketIdValue]);
 
   if (!ticket) {
-    return interaction.reply({ embeds: [errorEmbed('Ticket not found in database.')], ephemeral: true });
+    return interaction.reply({
+      embeds: [errorEmbed(i18n.t('ticket.error.not_found', member.id))],
+      ephemeral: true,
+    });
   }
 
   switch (actionName) {
@@ -307,50 +286,50 @@ async function handleTicketButton(interaction) {
     case 'resolved':
       return handleResolvedTicket(interaction, ticket);
     default:
-      return interaction.reply({ embeds: [errorEmbed('Unknown action.')], ephemeral: true });
+      return interaction.reply({
+        embeds: [errorEmbed(i18n.t('ticket.error.unknown_action', member.id))],
+        ephemeral: true,
+      });
   }
 }
 
-/**
- * Close a ticket with confirmation.
- */
 async function handleCloseTicket(interaction, ticket) {
   if (ticket.status === 'closed') {
-    return interaction.reply({ embeds: [errorEmbed('This ticket is already closed.')], ephemeral: true });
+    return interaction.reply({
+      embeds: [errorEmbed(i18n.t('ticket.error.already_closed', interaction.member.id))],
+      ephemeral: true,
+    });
   }
 
   const confirmEmbed = createEmbed({
-    title: '🔒 Confirm Close',
-    description: 'Are you sure you want to close this ticket? A transcript will be generated.',
+    title: i18n.t('ticket.close.confirm_title', interaction.member.id),
+    description: i18n.t('ticket.close.confirm_desc', interaction.member.id),
     color: config.embed.color.warning,
   });
 
   const confirmRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`ticket_confirm_close_${ticket.ticket_id}`)
-      .setLabel('Yes, Close')
+      .setLabel(i18n.t('ticket.close.yes', interaction.member.id))
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`ticket_cancel_${ticket.ticket_id}`)
-      .setLabel('Cancel')
+      .setLabel(i18n.t('ticket.close.cancel', interaction.member.id))
       .setStyle(ButtonStyle.Secondary)
   );
 
   await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: false });
 }
 
-/**
- * Actually performs the close after confirmation.
- */
 async function confirmCloseTicket(interaction, ticket) {
   const channel = interaction.channel;
   const { run } = getDb();
+  const userId = ticket.creator_id;
 
   await interaction.update({ components: [] });
 
   const processingEmbed = createEmbed({
-    title: '🔒 Closing Ticket',
-    description: 'Generating transcript and closing...',
+    title: i18n.t('ticket.close.processing', userId),
     color: config.embed.color.warning,
   });
 
@@ -359,18 +338,21 @@ async function confirmCloseTicket(interaction, ticket) {
   try {
     const html = await generateTranscript(channel, ticket.ticket_id);
 
-    // Save transcript to file
     const transcriptDir = path.join(__dirname, '../../transcripts');
     if (!fs.existsSync(transcriptDir)) fs.mkdirSync(transcriptDir, { recursive: true });
     const filePath = path.join(transcriptDir, `${ticket.ticket_id}.html`);
     fs.writeFileSync(filePath, html);
 
-    // Send transcript to log channel
     const logChannel = interaction.guild.channels.cache.get(config.ticket.logChannelId);
     if (logChannel) {
       const logEmbed = createEmbed({
-        title: '📄 Ticket Closed',
-        description: `**Ticket:** ${ticket.ticket_id}\n**Type:** ${getTicketTypeName(ticket.type)}\n**Creator:** <@${ticket.creator_id}>\n**Closed by:** ${interaction.user.tag}`,
+        title: i18n.t('ticket.close.log_title'),
+        description: i18n.t('ticket.close.log_desc', null, {
+          ticketId: ticket.ticket_id,
+          type: getTicketTypeName(ticket.type),
+          creator: `<@${ticket.creator_id}>`,
+          closer: interaction.user.tag,
+        }),
         color: config.embed.color.error,
         timestamp: new Date(),
       });
@@ -380,12 +362,11 @@ async function confirmCloseTicket(interaction, ticket) {
       });
     }
 
-    // DM the transcript to the ticket creator
     try {
       const creator = await interaction.client.users.fetch(ticket.creator_id);
       const dmEmbed = createEmbed({
-        title: '📄 Ticket Transcript',
-        description: `Your **${getTicketTypeName(ticket.type)}** ticket has been closed. A transcript is attached.`,
+        title: i18n.t('ticket.close.dm_title', ticket.creator_id),
+        description: i18n.t('ticket.close.dm_desc', ticket.creator_id, { type: getTicketTypeName(ticket.type) }),
         color: config.embed.color.primary,
       });
       await creator.send({ embeds: [dmEmbed], files: [filePath] });
@@ -393,34 +374,29 @@ async function confirmCloseTicket(interaction, ticket) {
       logger.warn(`Could not DM transcript to ${ticket.creator_id}`);
     }
 
-    // Update database
     run(
       `UPDATE tickets SET status = 'closed', closed_at = datetime('now'), transcript_url = ? WHERE ticket_id = ?`,
       [filePath, ticket.ticket_id]
     );
 
-    // Log the action
-    await logTicketAction(interaction.guild, 'Ticket Closed', {
+    await logTicketAction(interaction.guild, i18n.t('ticket.log.closed'), {
       ticketId: ticket.ticket_id,
       type: getTicketTypeName(ticket.type),
       creator: ticket.creator_id,
       closedBy: interaction.user,
     });
 
-    // Change channel name prefix to closed-
     await channel.setName(`closed-${channel.name}`);
 
-    // Remove send permissions for everyone except staff
     await channel.permissionOverwrites.edit(ticket.creator_id, {
       SendMessages: false,
     });
 
-    // Send closure message
     await channel.send({
       embeds: [
         createEmbed({
-          title: '✅ Ticket Closed',
-          description: `This ticket has been closed by ${interaction.user}.`,
+          title: i18n.t('ticket.close.success_title', ticket.creator_id),
+          description: i18n.t('ticket.close.success_desc', ticket.creator_id, { user: interaction.user }),
           color: config.embed.color.success,
         }),
       ],
@@ -428,18 +404,25 @@ async function confirmCloseTicket(interaction, ticket) {
   } catch (error) {
     logger.error('Error closing ticket:', error);
     await channel.send({
-      embeds: [errorEmbed('An error occurred while closing the ticket.')],
+      embeds: [errorEmbed(i18n.t('ticket.error.close_failed', ticket.creator_id))],
     });
   }
 }
 
-/**
- * Claim a ticket — assigns it to a staff member.
- */
 async function handleClaimTicket(interaction, ticket) {
+  const member = interaction.member;
+  const staffRoleId = config.ticket.staffRoleId;
+
+  if (staffRoleId && !member.roles.cache.has(staffRoleId)) {
+    return interaction.reply({
+      embeds: [errorEmbed(i18n.t('ticket.error.claim_staff_only', member.id))],
+      ephemeral: true,
+    });
+  }
+
   if (ticket.claimed_by) {
     return interaction.reply({
-      embeds: [errorEmbed(`This ticket is already claimed by <@${ticket.claimed_by}>.`)],
+      embeds: [errorEmbed(i18n.t('ticket.error.already_claimed', member.id, { user: `<@${ticket.claimed_by}>` }))],
       ephemeral: true,
     });
   }
@@ -453,35 +436,31 @@ async function handleClaimTicket(interaction, ticket) {
   await interaction.reply({
     embeds: [
       createEmbed({
-        title: '🙋 Ticket Claimed',
-        description: `This ticket has been claimed by ${interaction.user}.`,
+        title: i18n.t('ticket.claim.success_title', member.id),
+        description: i18n.t('ticket.claim.success_desc', member.id, { user: interaction.user }),
         color: config.embed.color.success,
       }),
     ],
   });
 
-  await logTicketAction(interaction.guild, 'Ticket Claimed', {
+  await logTicketAction(interaction.guild, i18n.t('ticket.log.claimed'), {
     ticketId: ticket.ticket_id,
     claimedBy: interaction.user,
   });
 }
 
-/**
- * Add a user to the ticket channel.
- */
 async function handleAddUser(interaction, ticket) {
-  // Ask for the user to add via a modal or ephemeral prompt
   const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
   const modal = new ModalBuilder()
     .setCustomId(`ticket_adduser_modal_${ticket.ticket_id}`)
-    .setTitle('Add User to Ticket');
+    .setTitle(i18n.t('ticket.add.title', interaction.member.id));
 
   const userIdInput = new TextInputBuilder()
     .setCustomId('user_id')
-    .setLabel('User ID or Mention')
+    .setLabel(i18n.t('ticket.add.label', interaction.member.id))
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Enter the user ID or @mention')
+    .setPlaceholder(i18n.t('ticket.add.placeholder', interaction.member.id))
     .setRequired(true);
 
   modal.addComponents(new ActionRowBuilder().addComponents(userIdInput));
@@ -489,21 +468,18 @@ async function handleAddUser(interaction, ticket) {
   await interaction.showModal(modal);
 }
 
-/**
- * Remove a user from the ticket channel.
- */
 async function handleRemoveUser(interaction, ticket) {
   const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
   const modal = new ModalBuilder()
     .setCustomId(`ticket_removeuser_modal_${ticket.ticket_id}`)
-    .setTitle('Remove User from Ticket');
+    .setTitle(i18n.t('ticket.remove.title', interaction.member.id));
 
   const userIdInput = new TextInputBuilder()
     .setCustomId('user_id')
-    .setLabel('User ID or Mention')
+    .setLabel(i18n.t('ticket.remove.label', interaction.member.id))
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Enter the user ID or @mention')
+    .setPlaceholder(i18n.t('ticket.remove.placeholder', interaction.member.id))
     .setRequired(true);
 
   modal.addComponents(new ActionRowBuilder().addComponents(userIdInput));
@@ -511,21 +487,18 @@ async function handleRemoveUser(interaction, ticket) {
   await interaction.showModal(modal);
 }
 
-/**
- * Rename the ticket channel.
- */
 async function handleRenameTicket(interaction, ticket) {
   const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
   const modal = new ModalBuilder()
     .setCustomId(`ticket_rename_modal_${ticket.ticket_id}`)
-    .setTitle('Rename Ticket');
+    .setTitle(i18n.t('ticket.rename.title', interaction.member.id));
 
   const nameInput = new TextInputBuilder()
     .setCustomId('new_name')
-    .setLabel('New Channel Name')
+    .setLabel(i18n.t('ticket.rename.label', interaction.member.id))
     .setStyle(TextInputStyle.Short)
-    .setPlaceholder('Enter a new name (no spaces)')
+    .setPlaceholder(i18n.t('ticket.rename.placeholder', interaction.member.id))
     .setRequired(true);
 
   modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
@@ -533,9 +506,6 @@ async function handleRenameTicket(interaction, ticket) {
   await interaction.showModal(modal);
 }
 
-/**
- * Generate and send a transcript on demand.
- */
 async function handleTranscript(interaction, ticket) {
   await interaction.deferReply({ ephemeral: true });
 
@@ -547,23 +517,23 @@ async function handleTranscript(interaction, ticket) {
     fs.writeFileSync(filePath, html);
 
     await interaction.editReply({
-      embeds: [successEmbed('Transcript generated.')],
+      embeds: [successEmbed(i18n.t('ticket.transcript.success', interaction.member.id))],
       files: [filePath],
     });
   } catch (error) {
     logger.error('Error generating transcript:', error);
     await interaction.editReply({
-      embeds: [errorEmbed('Failed to generate transcript.')],
+      embeds: [errorEmbed(i18n.t('ticket.error.transcript_failed', interaction.member.id))],
     });
   }
 }
 
-/**
- * Reopen a closed ticket.
- */
 async function handleReopenTicket(interaction, ticket) {
   if (ticket.status !== 'closed') {
-    return interaction.reply({ embeds: [errorEmbed('This ticket is already open.')], ephemeral: true });
+    return interaction.reply({
+      embeds: [errorEmbed(i18n.t('ticket.error.already_open', interaction.member.id))],
+      ephemeral: true,
+    });
   }
 
   const { run } = getDb();
@@ -574,8 +544,8 @@ async function handleReopenTicket(interaction, ticket) {
   await interaction.reply({
     embeds: [
       createEmbed({
-        title: '🔓 Ticket Reopened',
-        description: `This ticket has been reopened by ${interaction.user}.`,
+        title: i18n.t('ticket.reopen.success_title', interaction.member.id),
+        description: i18n.t('ticket.reopen.success_desc', interaction.member.id, { user: interaction.user }),
         color: config.embed.color.success,
       }),
     ],
@@ -586,42 +556,36 @@ async function handleReopenTicket(interaction, ticket) {
   });
 }
 
-/**
- * Delete a ticket channel entirely.
- */
 async function handleDeleteTicket(interaction, ticket) {
   const confirmEmbed = createEmbed({
-    title: '🗑️ Confirm Deletion',
-    description: 'Are you sure you want to **permanently delete** this ticket channel? This action cannot be undone.',
+    title: i18n.t('ticket.delete.confirm_title', interaction.member.id),
+    description: i18n.t('ticket.delete.confirm_desc', interaction.member.id),
     color: config.embed.color.error,
   });
 
   const confirmRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`ticket_confirm_delete_${ticket.ticket_id}`)
-      .setLabel('Yes, Delete')
+      .setLabel(i18n.t('ticket.delete.yes', interaction.member.id))
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`ticket_cancel_${ticket.ticket_id}`)
-      .setLabel('Cancel')
+      .setLabel(i18n.t('ticket.delete.cancel', interaction.member.id))
       .setStyle(ButtonStyle.Secondary)
   );
 
   await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow], ephemeral: false });
 }
 
-/**
- * Confirm delete — removes the channel and updates DB.
- */
 async function confirmDeleteTicket(interaction, ticket) {
   const { run } = getDb();
   run(`UPDATE tickets SET status = 'deleted' WHERE ticket_id = ?`, [ticket.ticket_id]);
 
   await interaction.reply({
-    embeds: [successEmbed('Deleting ticket channel...')],
+    embeds: [successEmbed(i18n.t('ticket.delete.success', interaction.member.id))],
   });
 
-  await logTicketAction(interaction.guild, 'Ticket Deleted', {
+  await logTicketAction(interaction.guild, i18n.t('ticket.log.deleted'), {
     ticketId: ticket.ticket_id,
     deletedBy: interaction.user,
   });
@@ -629,9 +593,6 @@ async function confirmDeleteTicket(interaction, ticket) {
   await interaction.channel.delete();
 }
 
-/**
- * Handles modals submitted for ticket actions (add user, remove user, rename).
- */
 async function handleTicketModal(interaction) {
   const modalId = interaction.customId;
 
@@ -641,7 +602,10 @@ async function handleTicketModal(interaction) {
     const member = await interaction.guild.members.fetch(userId).catch(() => null);
 
     if (!member) {
-      return interaction.reply({ embeds: [errorEmbed('User not found.')], ephemeral: true });
+      return interaction.reply({
+        embeds: [errorEmbed(i18n.t('ticket.error.user_not_found', interaction.member.id))],
+        ephemeral: true,
+      });
     }
 
     await interaction.channel.permissionOverwrites.edit(member.id, {
@@ -651,7 +615,7 @@ async function handleTicketModal(interaction) {
     });
 
     await interaction.reply({
-      embeds: [successEmbed(`Added ${member} to this ticket.`)],
+      embeds: [successEmbed(i18n.t('ticket.add.success', interaction.member.id, { member }))],
     });
   }
 
@@ -661,7 +625,10 @@ async function handleTicketModal(interaction) {
     const member = await interaction.guild.members.fetch(userId).catch(() => null);
 
     if (!member) {
-      return interaction.reply({ embeds: [errorEmbed('User not found.')], ephemeral: true });
+      return interaction.reply({
+        embeds: [errorEmbed(i18n.t('ticket.error.user_not_found', interaction.member.id))],
+        ephemeral: true,
+      });
     }
 
     await interaction.channel.permissionOverwrites.edit(member.id, {
@@ -669,7 +636,7 @@ async function handleTicketModal(interaction) {
     });
 
     await interaction.reply({
-      embeds: [successEmbed(`Removed ${member} from this ticket.`)],
+      embeds: [successEmbed(i18n.t('ticket.remove.success', interaction.member.id, { member }))],
     });
   }
 
@@ -678,43 +645,43 @@ async function handleTicketModal(interaction) {
     const newName = interaction.fields.getTextInputValue('new_name').toLowerCase().replace(/[^a-z0-9_-]/g, '');
 
     if (!newName) {
-      return interaction.reply({ embeds: [errorEmbed('Invalid channel name.')], ephemeral: true });
+      return interaction.reply({
+        embeds: [errorEmbed(i18n.t('ticket.error.invalid_name', interaction.member.id))],
+        ephemeral: true,
+      });
     }
 
     await interaction.channel.setName(newName);
     await interaction.reply({
-      embeds: [successEmbed(`Channel renamed to \`${newName}\`.`)],
+      embeds: [successEmbed(i18n.t('ticket.rename.success', interaction.member.id, { name: newName }))],
     });
   }
 }
 
-/**
- * Logs a ticket action to the ticket log channel.
- */
 async function logTicketAction(guild, action, data) {
   const logChannel = guild.channels.cache.get(config.ticket.logChannelId);
   if (!logChannel) return;
 
   const embed = createEmbed({
     title: `${config.emoji.ticket} ${action}`,
-    color: action.includes('Close') ? config.embed.color.error : config.embed.color.success,
+    color: action.includes(i18n.t('ticket.log.closed')) ? config.embed.color.error : config.embed.color.success,
     fields: [
-      { name: 'Ticket ID', value: `\`${data.ticketId}\``, inline: true },
-      ...(data.type ? [{ name: 'Type', value: data.type, inline: true }] : []),
+      { name: i18n.t('ticket.log.field_ticket'), value: `\`${data.ticketId}\``, inline: true },
+      ...(data.type ? [{ name: i18n.t('ticket.log.field_type'), value: data.type, inline: true }] : []),
       ...(data.creator
-        ? [{ name: 'Creator', value: `${data.creator} (\`${data.creator.id}\`)`, inline: true }]
+        ? [{ name: i18n.t('ticket.log.field_creator'), value: `${data.creator} (\`${data.creator.id}\`)`, inline: true }]
         : []),
       ...(data.claimedBy
-        ? [{ name: 'Claimed By', value: `${data.claimedBy} (\`${data.claimedBy.id}\`)`, inline: true }]
+        ? [{ name: i18n.t('ticket.log.field_claimed'), value: `${data.claimedBy} (\`${data.claimedBy.id}\`)`, inline: true }]
         : []),
       ...(data.closedBy
-        ? [{ name: 'Closed By', value: `${data.closedBy} (\`${data.closedBy.id}\`)`, inline: true }]
+        ? [{ name: i18n.t('ticket.log.field_closed'), value: `${data.closedBy} (\`${data.closedBy.id}\`)`, inline: true }]
         : []),
       ...(data.deletedBy
-        ? [{ name: 'Deleted By', value: `${data.deletedBy} (\`${data.deletedBy.id}\`)`, inline: true }]
+        ? [{ name: i18n.t('ticket.log.field_deleted'), value: `${data.deletedBy} (\`${data.deletedBy.id}\`)`, inline: true }]
         : []),
       ...(data.channel
-        ? [{ name: 'Channel', value: `${data.channel} (\`${data.channel.id}\`)`, inline: false }]
+        ? [{ name: i18n.t('ticket.log.field_channel'), value: `${data.channel} (\`${data.channel.id}\`)`, inline: false }]
         : []),
     ],
     timestamp: new Date(),
@@ -723,16 +690,9 @@ async function logTicketAction(guild, action, data) {
   await logChannel.send({ embeds: [embed] });
 }
 
-/**
- * Schedules an inactivity check for a ticket channel.
- * After 24 hours of no messages, a warning is sent.
- * After 48 hours, the ticket is auto-closed.
- */
 function scheduleInactivityCheck(channel, ticketId) {
-  // This is a simplified version — in production you'd use a proper scheduler
-  // or check on each message event.
-  const INACTIVITY_WARNING = 24 * 60 * 60 * 1000; // 24 hours
-  const INACTIVITY_CLOSE = 48 * 60 * 60 * 1000; // 48 hours
+  const INACTIVITY_WARNING = 24 * 60 * 60 * 1000;
+  const INACTIVITY_CLOSE = 48 * 60 * 60 * 1000;
 
   setTimeout(async () => {
     try {
@@ -740,19 +700,17 @@ function scheduleInactivityCheck(channel, ticketId) {
       const ticket = g(`SELECT * FROM tickets WHERE ticket_id = ?`, [ticketId]);
       if (!ticket || ticket.status !== 'open') return;
 
-      // Check last message in channel
       const lastMessage = (await channel.messages.fetch({ limit: 1 })).first();
       if (!lastMessage) return;
 
       const timeSinceLastMessage = Date.now() - lastMessage.createdTimestamp;
 
       if (timeSinceLastMessage > INACTIVITY_CLOSE) {
-        // Auto-close the ticket
         await channel.send({
           embeds: [
             createEmbed({
-              title: '🔒 Auto-Closed',
-              description: 'This ticket has been automatically closed due to inactivity.',
+              title: i18n.t('ticket.close.auto_title'),
+              description: i18n.t('ticket.close.auto_desc'),
               color: config.embed.color.warning,
             }),
           ],
@@ -762,8 +720,8 @@ function scheduleInactivityCheck(channel, ticketId) {
         await channel.send({
           embeds: [
             createEmbed({
-              title: '⚠️ Inactivity Warning',
-              description: 'This ticket will be automatically closed in 24 hours if there is no response.',
+              title: i18n.t('ticket.inactivity.warning_title'),
+              description: i18n.t('ticket.inactivity.warning_desc'),
               color: config.embed.color.warning,
             }),
           ],
@@ -772,15 +730,15 @@ function scheduleInactivityCheck(channel, ticketId) {
     } catch (error) {
       logger.error('Inactivity check error:', error);
     }
-  }, Math.max(INACTIVITY_WARNING, 60 * 1000)); // Check at least after 1 minute
+  }, Math.max(INACTIVITY_WARNING, 60 * 1000));
 }
 
 async function handleEscalateTicket(interaction, ticket) {
   await interaction.reply({
     embeds: [
       createEmbed({
-        title: '🙋 Staff Requested',
-        description: 'A staff member has been notified. Please wait for assistance.',
+        title: i18n.t('ticket.escalate.success_title', interaction.member.id),
+        description: i18n.t('ticket.escalate.success_desc', interaction.member.id),
         color: config.embed.color.warning,
       }),
     ],
@@ -789,11 +747,11 @@ async function handleEscalateTicket(interaction, ticket) {
   const staffRoleId = config.ticket.staffRoleId;
   if (staffRoleId) {
     await interaction.channel.send({
-      content: `<@&${staffRoleId}> — ${interaction.user} is requesting staff assistance in this ticket.`,
+      content: i18n.t('ticket.escalate.ping', null, { roleId: staffRoleId, user: interaction.user }),
       embeds: [
         createEmbed({
-          title: '🙋 Staff Assistance Requested',
-          description: `${interaction.user} has requested a human staff member to help with their ticket.`,
+          title: i18n.t('ticket.escalate.notify_title'),
+          description: i18n.t('ticket.escalate.notify_desc', null, { user: interaction.user }),
           color: config.embed.color.warning,
         }),
       ],
@@ -805,8 +763,8 @@ async function handleResolvedTicket(interaction, ticket) {
   await interaction.reply({
     embeds: [
       createEmbed({
-        title: '✅ Glad We Could Help!',
-        description: "I'm glad your issue was resolved! If you need anything else, just ask here or close the ticket using the button above.",
+        title: i18n.t('ticket.resolved.success_title', interaction.member.id),
+        description: i18n.t('ticket.resolved.success_desc', interaction.member.id),
         color: config.embed.color.success,
       }),
     ],
