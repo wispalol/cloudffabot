@@ -602,13 +602,42 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
 function analyzeBanAppeal(answers) {
   const allText = answers.map(a => a.answer.toLowerCase()).join(' ');
 
-  const cheatClients = ['meteor client', 'meteor', 'metore client', 'metore', 'metor', 'wurst', 'lunar client hacks', 'badlion hacks', 'impact client',
-    'inertia client', 'aristois', 'future client', 'vape', 'dortware', 'bongware', 'crystal client',
-    'autoclicker', 'auto clicker', 'killaura', 'kill aura', 'reach', 'aimbot', 'aim assist',
-    'bhop', 'speedhack', 'fly hack', 'flyhack', 'x-ray', 'xray', 'wallhack', 'wall hack',
-    'forcefield', 'force field', 'nofall', 'blink', 'antivoid', 'cavefinder', 'esp',
+  const cheatClients = [
+    'meteor client', 'meteor', 'metore client', 'metore', 'metor',
+    'wurst', 'wurst client',
+    'liquidbounce', 'liquid bounce',
+    'impact client', 'impact',
+    'aristois',
+    'future client', 'future',
+    'rusherhack', 'rusher hack', 'rusher',
+    'kami blue', 'kami',
+    'bleachhack', 'bleach hack',
+    'inertia', 'inertia client',
+    'thunderhack', 'thunder hack',
+    'lambda',
+    'pyro client', 'pyro',
+    'phobos',
+    'gamesense', 'game sense',
+    'catalyst',
+    'sigma',
+    'flux',
+    'tenacity',
+    'rise',
+    'novoline',
+    'moon',
+    'augustus',
+    'slinky',
+    'nightx', 'night x',
+    'polar client', 'polar',
+    'opal client', 'opal',
+    'celestial',
+    'ares',
+    'boze',
     'hacked client', 'cheat client', 'hax', 'client hacks', 'cheating client', 'mods client',
-    'opcional', 'sigma', 'liquidbounce', 'novoline', 'vape v4', 'vapev4'];
+    'vape', 'vape v4', 'vapev4', 'dortware', 'bongware', 'crystal client',
+    'lunar client hacks', 'badlion hacks',
+    'opcional',
+  ];
 
   // Sort by length descending (longest first) to match multi-word clients before single words
   const sortedClients = [...cheatClients].sort((a, b) => b.length - a.length);
