@@ -255,7 +255,7 @@ module.exports = {
 
   questions: {
     ban_appeal: [
-      '¿Cuál es tu nombre de usuario de Discord (incluyendo discriminador)?',
+      '¿Cuál es tu nombre de usuario de Minecraft (IGN)?',
       '¿Por qué fuiste baneado?',
       '¿Por qué debería levantarse tu baneo?',
       '¿Cuánto tiempo llevas en el servidor?',

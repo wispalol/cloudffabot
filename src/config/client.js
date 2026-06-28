@@ -22,7 +22,7 @@ const config = {
     // Questions shown per ticket type when the ticket opens
     questions: {
       'ban_appeal': [
-        'What is your Minecraft in-game username (IGN)?',
+        'What is your Discord username (including discriminator)?',
         'Why were you banned?',
         'Why should your ban be lifted?',
         'How long have you been on the server?',
