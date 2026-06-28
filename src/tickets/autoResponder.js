@@ -341,11 +341,11 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             // No direct results found, but let the user know we tried
             searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on Google. A staff member will be with you shortly to assist!
             
-            *Tip: Make sure your question is clear and specific for the best results.*`);
+            *Tip: Ensure your Search Engine ID (CX) is configured to "Search the entire web" in the Google Programmable Search Engine control panel for better results.*`);
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
             
             // Wait a few seconds before moving on
-            await new Promise((r) => setTimeout(r, 5000));
+            await new Promise((r) => setTimeout(r, 6000));
           }
         } catch (err) {
           logger.error('Search during ticket collection failed:', err);

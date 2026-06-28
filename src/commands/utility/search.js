@@ -69,7 +69,9 @@ module.exports = {
         .setFooter({ text: `Powered by ${source}` });
 
       if (items.length === 0) {
-        embed.setDescription(`No results found for **${query}**.`);
+        embed.setDescription(`No results found for **${query}** on ${source}.
+        
+        *Tip: If you're using Google and not getting results, ensure your Search Engine ID (CX) is configured to "Search the entire web".*`);
         return interaction.editReply({ embeds: [embed] });
       }
 

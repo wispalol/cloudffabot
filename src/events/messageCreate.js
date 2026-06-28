@@ -75,7 +75,9 @@ module.exports = {
             const embed = new EmbedBuilder()
               .setTitle(`Search results for: ${query}`)
               .setColor('#5865F2')
-              .setDescription(`No results found for **${query}**.`);
+              .setDescription(`No results found for **${query}** on Google.
+              
+              *Tip: Ensure your Search Engine ID (CX) is configured to "Search the entire web" in the Programmable Search Engine control panel.*`);
             
             return replyMsg.edit({ content: null, embeds: [embed] });
           }
