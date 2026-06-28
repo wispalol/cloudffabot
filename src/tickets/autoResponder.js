@@ -84,7 +84,7 @@ async function askLanguagePreference(channel, member, ticketId, userId) {
           color: config.embed.color.success,
         })],
       });
-      return resolved;
+      return userId;
     }
 
     await channel.send({
