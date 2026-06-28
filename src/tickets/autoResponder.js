@@ -327,19 +327,23 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           const bannedAt = acBan.banned_at ? new Date(acBan.banned_at).toLocaleString() : 'Unknown';
           const expires = acBan.expires_at ? new Date(acBan.expires_at).toLocaleString() : 'Permanent';
           const status = acBan.unbanned ? 'Unbanned' : 'Active';
-          const hackLabel = acBan.check_name || '';
+          const hackLabel = acBan.check_name || 'Unknown Hack';
+
           await channel.send({
             embeds: [createEmbed({
-              title: i18n.t('auto.ban.anticheat_found_title', userId),
-              description: i18n.t('auto.ban.anticheat_found_desc', userId, {
-                playerName: acBan.player_name || 'Unknown',
-                uuid: acBan.player_uuid || 'N/A',
-                hackType: hackLabel,
-                bannedAt,
-                expires,
-                status,
-              }),
-              color: config.embed.color.warning,
+              title: '🚨 ANTICHEAT RECORD FOUND',
+              description: `Our systems have **conclusively detected** the use of prohibited modifications on your account. This is **not** a matter of opinion — the evidence is permanently recorded in our database.\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `**Player:** \`${acBan.player_name || 'Unknown'}\`\n` +
+                `**UUID:** \`${acBan.player_uuid || 'N/A'}\`\n` +
+                `**Detection:** \`${hackLabel}\`\n` +
+                `**Date:** ${bannedAt}\n` +
+                `**Expires:** ${expires}\n` +
+                `**Status:** ${status}\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `You were banned for **${hackLabel}**. This is a clear violation of our rules.`,
+              color: 0xED4245,
+              footerText: 'This record cannot be disputed — denial will not override system evidence.',
             })],
           });
 
@@ -363,14 +367,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           const hardHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'blink', 'phase', 'disabler'];
           const isHardHack = hardHacks.some(h => hackLabel.toLowerCase().includes(h));
           if (isHardHack) {
-            await channel.send({
-              embeds: [createEmbed({
-                title: '⚖️ Ban Confirmed by Anticheat Records',
-                description: `Our anticheat database confirms you were detected using **${hackLabel}**. This is a clear violation of our rules. Your responses have been evaluated accordingly.`,
-                color: 0xED4245,
-              })],
-            });
-            await new Promise((r) => setTimeout(r, 1500));
+            await new Promise((r) => setTimeout(r, 1000));
             return finishAutoResponse(channel, member, type, ticketId, userId);
           }
         } else if (process.env.ANTICHEAT_DB_HOST) {
