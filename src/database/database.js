@@ -136,6 +136,14 @@ function createTables() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_locales (
+      user_id TEXT PRIMARY KEY,
+      locale TEXT NOT NULL DEFAULT 'en',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   saveDatabase();
 }
 

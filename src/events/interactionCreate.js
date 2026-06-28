@@ -1,5 +1,7 @@
 const logger = require('../config/logger');
-const { errorEmbed } = require('../utils/embeds');
+const { errorEmbed, successEmbed, createEmbed } = require('../utils/embeds');
+const i18n = require('../i18n');
+const config = require('../config/client');
 const {
   handleTicketCreate,
   handleTicketButton,
@@ -49,6 +51,28 @@ module.exports = {
       // ─── Ticket Select Menu ────────────────────────────
       if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_create') {
         await handleTicketCreate(interaction);
+        return;
+      }
+
+      // ─── Language Select Menu ──────────────────────────
+      if (interaction.isStringSelectMenu() && interaction.customId === 'language_select') {
+        const locale = interaction.values[0];
+        const localeInfo = i18n.getLocaleInfo().find(l => l.code === locale);
+        if (localeInfo && i18n.setUserLocale(interaction.user.id, locale)) {
+          await interaction.update({
+            embeds: [createEmbed({
+              title: `${localeInfo.flag} Language Changed`,
+              description: `Your language has been set to **${localeInfo.name}**.`,
+              color: config.embed.color.success,
+            })],
+            components: [],
+          });
+        } else {
+          await interaction.update({
+            embeds: [errorEmbed('Failed to set language preference.')],
+            components: [],
+          });
+        }
         return;
       }
 

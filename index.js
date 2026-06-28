@@ -2,9 +2,10 @@ require('dotenv').config();
 
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const logger = require('./src/config/logger');
-const { connectDatabase } = require('./src/database/database');
+const { connectDatabase, getDb } = require('./src/database/database');
 const { loadCommands } = require('./src/handlers/commandHandler');
 const { loadEvents } = require('./src/handlers/eventHandler');
+const i18n = require('./src/i18n');
 
 const client = new Client({
   intents: [
@@ -41,6 +42,7 @@ process.on('uncaughtException', (err) => {
 async function start() {
   try {
     await connectDatabase();
+    i18n.init(getDb);
     logger.info('Database connected successfully.');
 
     await loadCommands(client);

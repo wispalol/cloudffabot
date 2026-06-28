@@ -127,7 +127,19 @@ module.exports = {
     },
     no_questions: {
       title: '📬 Ticket Creado',
-      desc: 'Tu ticket de **{type}** ha sido creado. Un miembro del personal te atenderá en breve.\n\nSi necesitas asistencia inmediata, haz clic en el botón de abajo.',
+      desc: 'Tu ticket **{type}** ha sido creado. Un miembro del personal estará contigo en breve.\n\nSi necesitas asistencia inmediata, haz clic en el botón de abajo.',
+    },
+    language_prompt: {
+      title: '🌐 Preferencia de Idioma',
+      desc: '¿Te gustaría cambiar tu idioma? Todas las preguntas y respuestas se mostrarán en tu idioma preferido.\n\n**Idiomas disponibles:**\n{languages}\n\nSolo escribe el nombre del idioma (ej. `{example}`) o escribe `no` para mantener **{current}**.',
+      changed_title: '✅ Idioma Cambiado',
+      changed_desc: 'El idioma se ha cambiado a **{name}** {flag}. Todas las preguntas siguientes estarán en tu idioma preferido.',
+      kept_title: '👍 Sin Problema',
+      kept_desc: 'Continuaremos en **{current}**. Empecemos con tus preguntas.',
+      invalid_title: '❌ No Reconocido',
+      invalid_desc: 'No reconocí ese idioma. Por favor escribe uno de los siguientes: {languages}\n\nO escribe `no` para mantener **{current}**.',
+      timeout_title: '⏰ Sin Respuesta',
+      timeout_desc: 'Continuaré en **{current}**. Puedes cambiar tu idioma en cualquier momento usando `/language`.',
     },
     question: {
       title: '📌 Pregunta {num} de {total}',
@@ -170,6 +182,16 @@ module.exports = {
       denial_title: '🤝 Entiendo tu preocupación',
       denial_desc: 'Entiendo que sientes que este baneo pudo haber sido emitido por error. Nuestro equipo del personal revisará cuidadosamente toda la evidencia al procesar tu apelación.\n\nMientras tanto, por favor continúa respondiendo las preguntas restantes para que tengamos una imagen completa de tu situación.',
       denial_footer: 'La honestidad es el mejor enfoque para una apelación exitosa.',
+    },
+    ban_analysis: {
+      analysis_title: '🤖 Análisis de Apelación de Baneo',
+      analysis_desc: 'He revisado todas tus respuestas y aquí está mi evaluación:',
+      fair_title: '✅ Baneo Parece Justificado',
+      fair_desc: 'Después de revisar cuidadosamente tus respuestas, creo que este baneo fue **justificado**. Reconociste la violación de las reglas, mostraste comprensión de por qué se tomó la acción y demostraste disposición para mejorar.\n\nBasado en esto, **no escalaré esta apelación más**. Tu caso ha sido registrado, y si deseas hablar con el personal, puedes usar el botón de abajo para solicitar una revisión humana.\n\nGracias por tu honestidad — siempre es el mejor enfoque.',
+      mixed_title: '⚖️ Apelación Requiere Revisión del Personal',
+      mixed_desc: 'Basado en tus respuestas, veo que hay aspectos de esta situación que necesitan que un **miembro del personal humano** los revise. Tus respuestas han sido registradas y serán enviadas a nuestro equipo.\n\nUn miembro del personal revisará tu apelación y te responderá. Por favor ten paciencia mientras investigan el asunto a fondo.',
+      unfair_title: '🔍 Apelación Enviada al Personal',
+      unfair_desc: 'Basado en tus respuestas, parece que **cuestionas firmemente este baneo**. Dado que esto requiere una investigación exhaustiva, tu caso ha sido **enviado a nuestro equipo de personal** para su revisión.\n\nUn miembro del personal examinará todas las evidencias y tomará una decisión. Se te notificará aquí una vez que se haya determinado.\n\n📌 **Consejo:** Si tienes alguna evidencia (capturas de pantalla, etc.) que respalde tu caso, por favor compártela en este canal.',
     },
     summary: {
       title: '📋 {type} — Resumen de tu Caso',
