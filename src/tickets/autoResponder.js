@@ -4,6 +4,7 @@ const { createEmbed } = require('../utils/embeds');
 const logger = require('../config/logger');
 const i18n = require('../i18n');
 const { lookupAnticheatBan } = require('../database/anticheatDb');
+const { getDb } = require('../database/database');
 
 const ANSWERS = new Map();
 const HUMAN_KEYWORDS = ['human', 'staff', 'person', 'agent', 'real person', 'człowiek', 'personel', 'humano', 'persona real'];
@@ -101,15 +102,7 @@ async function askLanguagePreference(channel, member, ticketId, userId) {
 
     return null;
   } catch {
-    await channel.send({
-      embeds: [createEmbed({
-        title: i18n.t('auto.language_prompt.timeout_title', userId),
-        description: i18n.t('auto.language_prompt.timeout_desc', userId, {
-          current: currentName ? `${currentName.flag} ${currentName.name}` : 'English',
-        }),
-        color: config.embed.color.warning,
-      })],
-    });
+    await closeAndDeleteTicket(channel, ticketId, userId);
     return null;
   }
 }
@@ -406,14 +399,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     await new Promise((r) => setTimeout(r, 1000));
     await askNextQuestion(channel, member, type, ticketId, questions, index + 1, userId);
   } catch {
-    await channel.send({
-      embeds: [createEmbed({
-        title: i18n.t('auto.question.time_expired_title', userId),
-        description: i18n.t('auto.question.time_expired_desc', userId),
-        color: config.embed.color.warning,
-      })],
-      components: [buildEscalateButtons(ticketId, userId)],
-    });
+    await closeAndDeleteTicket(channel, ticketId, userId);
   }
 }
 
@@ -875,6 +861,27 @@ function buildEscalateButtons(ticketId, userId = null) {
       .setStyle(ButtonStyle.Success)
       .setEmoji('✅')
   );
+}
+
+async function closeAndDeleteTicket(channel, ticketId, userId) {
+  try {
+    await channel.send({
+      embeds: [createEmbed({
+        title: i18n.t('auto.question.time_expired_title', userId),
+        description: i18n.t('auto.question.time_expired_desc', userId),
+        color: config.embed.color.warning,
+      })],
+    });
+
+    await new Promise((r) => setTimeout(r, 3000));
+
+    const { run } = getDb();
+    run(`UPDATE tickets SET status = 'deleted' WHERE ticket_id = ?`, [ticketId]);
+
+    await channel.delete();
+  } catch (error) {
+    logger.error('Error auto-closing ticket:', error);
+  }
 }
 
 module.exports = {
