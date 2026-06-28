@@ -285,7 +285,11 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               .setFooter({ text: 'I hope this helps while you wait for staff!' });
 
             const summary = summarizeFromItems(items, 500);
-            if (summary) searchEmbed.setDescription(summary);
+            if (summary) {
+              searchEmbed.setDescription(summary);
+            } else {
+              searchEmbed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+            }
 
             for (let i = 0; i < Math.min(items.length, 3); i++) {
               const it = items[i];

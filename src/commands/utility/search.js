@@ -45,10 +45,11 @@ module.exports = {
       }
 
       // Build embed with top results
+      const source = searchInformation?.source === 'google' ? 'Google' : (searchInformation?.source === 'tavily' ? 'Tavily' : 'DuckDuckGo');
       const embed = new EmbedBuilder()
         .setTitle(`Search results for: ${query}`)
         .setColor(config.embed.color.primary)
-        .setFooter({ text: 'Powered by Google Custom Search' });
+        .setFooter({ text: `Powered by ${source}` });
 
       // Add as fields (title as linked name, snippet + link in value)
       for (let i = 0; i < Math.min(items.length, num); i++) {
@@ -67,7 +68,11 @@ module.exports = {
 
       // Build a short synthesized answer and show it above the results
       const summary = summarizeFromItems(items, 400);
-      if (summary) embed.setDescription(summary);
+      if (summary) {
+        embed.setDescription(summary);
+      } else {
+        embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+      }
 
       // Build buttons for quick open (max 5)
       const buttons = [];

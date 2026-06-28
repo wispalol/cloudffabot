@@ -10,8 +10,15 @@ function summarizeFromItems(items, maxChars = 400) {
   // Collect snippet-like text from items
   const texts = [];
   for (const it of items) {
-    if (it.snippet && it.snippet.length) texts.push(it.snippet);
-    else if (it.title && it.title.length) texts.push(it.title);
+    if (it.snippet && it.snippet.length) {
+      // Don't include the generic "No instant answer" fallback snippet in the summary
+      if (it.snippet.includes('No instant answer found')) continue;
+      texts.push(it.snippet);
+    }
+    else if (it.title && it.title.length) {
+      if (it.title.includes('Search for "')) continue;
+      texts.push(it.title);
+    }
   }
 
   if (texts.length === 0) return null;
