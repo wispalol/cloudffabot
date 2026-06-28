@@ -41,23 +41,15 @@ module.exports = {
       const { items, searchInformation } = await searchGoogle(query, num);
 
       // Build embed with top results
-      const source = searchInformation?.source === 'google' ? 'Google' : (searchInformation?.source === 'tavily' ? 'Tavily' : 'DuckDuckGo');
+      const source = searchInformation?.source === 'google' ? 'Google' : (searchInformation?.source === 'tavily' ? 'Tavily' : 'Web');
       const embed = new EmbedBuilder()
         .setTitle(`Search results for: ${query}`)
         .setColor(config.embed.color.primary)
         .setFooter({ text: `Powered by ${source}` });
 
       if (items.length === 0) {
-        embed.setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
-        
-        const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-        const button = new ButtonBuilder()
-          .setLabel('Search on DuckDuckGo')
-          .setStyle(ButtonStyle.Link)
-          .setURL(ddgUrl);
-        
-        const components = [new ActionRowBuilder().addComponents(button)];
-        return interaction.editReply({ embeds: [embed], components });
+        embed.setDescription(`No results found for **${query}**.`);
+        return interaction.editReply({ embeds: [embed] });
       }
 
       // Add as fields (title as linked name, snippet + link in value)

@@ -319,19 +319,8 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             // before the next question scrolls it away
             await new Promise((r) => setTimeout(r, 5000));
           } else {
-            // No direct results found by any provider
-            searchEmbed.setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
-            
-            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-            const button = new ButtonBuilder()
-              .setLabel('Search on DuckDuckGo')
-              .setStyle(ButtonStyle.Link)
-              .setURL(ddgUrl);
-            
-            const components = [new ActionRowBuilder().addComponents(button)];
-            await searchStatusMsg.edit({ content: null, embeds: [searchEmbed], components });
-            
-            await new Promise((r) => setTimeout(r, 5000));
+            // No direct results found, just remove the searching message
+            await searchStatusMsg.delete().catch(() => {});
           }
         } catch (err) {
           logger.error('Search during ticket collection failed:', err);

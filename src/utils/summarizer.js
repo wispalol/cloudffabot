@@ -12,7 +12,7 @@ function summarizeFromItems(items, maxChars = 400) {
   for (const it of items) {
     if (it.snippet && it.snippet.length) {
       // Don't include generic fallback snippets in the summary
-      if (it.snippet.includes('No instant answer found') || it.snippet.includes('helpful links for you')) continue;
+      if (it.snippet.includes('helpful links for you')) continue;
       texts.push(it.snippet);
     }
     else if (it.title && it.title.length) {

@@ -53,16 +53,9 @@ module.exports = {
             const embed = new EmbedBuilder()
               .setTitle(`Search results for: ${query}`)
               .setColor('#5865F2')
-              .setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
+              .setDescription(`No results found for **${query}**.`);
             
-            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-            const button = new ButtonBuilder()
-              .setLabel('Search on DuckDuckGo')
-              .setStyle(ButtonStyle.Link)
-              .setURL(ddgUrl);
-            
-            const components = [new ActionRowBuilder().addComponents(button)];
-            return replyMsg.edit({ content: null, embeds: [embed], components });
+            return replyMsg.edit({ content: null, embeds: [embed] });
           }
 
           const embed = new EmbedBuilder()
@@ -159,16 +152,9 @@ module.exports = {
             const embed = new EmbedBuilder()
               .setTitle(`Answer: ${query}`)
               .setColor('#5865F2')
-              .setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
+              .setDescription(`No results found for **${query}**.`);
             
-            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-            const button = new ButtonBuilder()
-              .setLabel('Search on DuckDuckGo')
-              .setStyle(ButtonStyle.Link)
-              .setURL(ddgUrl);
-            
-            const components = [new ActionRowBuilder().addComponents(button)];
-            return replyMsg.edit({ content: null, embeds: [embed], components });
+            return replyMsg.edit({ content: null, embeds: [embed] });
           }
 
           const embed = new EmbedBuilder()
