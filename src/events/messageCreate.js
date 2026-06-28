@@ -71,7 +71,11 @@ module.exports = {
             .setFooter({ text: 'Powered by search provider' });
 
           const summary = summarizeFromItems(items, 400);
-          if (summary) embed.setDescription(summary);
+          if (summary) {
+            embed.setDescription(summary);
+          } else {
+            embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+          }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {
             const it = items[i];
@@ -173,7 +177,11 @@ module.exports = {
             .setFooter({ text: 'Powered by search provider' });
 
           const summary = summarizeFromItems(items, 400);
-          if (summary) embed.setDescription(summary);
+          if (summary) {
+            embed.setDescription(summary);
+          } else {
+            embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+          }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {
             const it = items[i];

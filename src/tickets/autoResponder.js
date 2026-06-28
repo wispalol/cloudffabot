@@ -677,7 +677,11 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
             .setFooter({ text: 'I found some resources that might help you immediately.' });
 
           const summary = summarizeFromItems(items, 500);
-          if (summary) searchEmbed.setDescription(summary);
+          if (summary) {
+            searchEmbed.setDescription(summary);
+          } else {
+            searchEmbed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+          }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {
             const it = items[i];
