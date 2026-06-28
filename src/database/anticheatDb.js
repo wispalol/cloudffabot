@@ -41,6 +41,46 @@ async function getNewBans(lastCheckId) {
   }
 }
 
+async function lookupAnticheatBan(query) {
+  if (!pool) return null;
+  try {
+    const trimmed = query.toString().trim();
+    if (!trimmed) return null;
+
+    // Search by player_name (case-insensitive)
+    let [rows] = await pool.query(
+      'SELECT * FROM opmcheck_bans WHERE LOWER(player_name) = LOWER(?) ORDER BY ban_id DESC LIMIT 1',
+      [trimmed]
+    );
+    if (rows.length > 0) return rows[0];
+
+    // Search by player_uuid (with or without dashes)
+    const cleanUuid = trimmed.replace(/-/g, '');
+    if (cleanUuid.length === 32 && /^[0-9a-f]{32}$/i.test(cleanUuid)) {
+      [rows] = await pool.query(
+        'SELECT * FROM opmcheck_bans WHERE REPLACE(player_uuid, "-", "") = ? ORDER BY ban_id DESC LIMIT 1',
+        [cleanUuid]
+      );
+      if (rows.length > 0) return rows[0];
+    }
+
+    // Search by ban_id (auto-increment integer)
+    const banId = parseInt(trimmed, 10);
+    if (!isNaN(banId)) {
+      [rows] = await pool.query(
+        'SELECT * FROM opmcheck_bans WHERE ban_id = ?',
+        [banId]
+      );
+      if (rows.length > 0) return rows[0];
+    }
+
+    return null;
+  } catch (error) {
+    logger.error('Error looking up anticheat ban:', error.message);
+    return null;
+  }
+}
+
 async function closeAnticheatDb() {
   if (pool) {
     await pool.end();
@@ -48,4 +88,4 @@ async function closeAnticheatDb() {
   }
 }
 
-module.exports = { connectAnticheatDb, getNewBans, closeAnticheatDb };
+module.exports = { connectAnticheatDb, getNewBans, lookupAnticheatBan, closeAnticheatDb };

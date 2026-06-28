@@ -3,6 +3,7 @@ const config = require('../config/client');
 const { createEmbed } = require('../utils/embeds');
 const logger = require('../config/logger');
 const i18n = require('../i18n');
+const { lookupAnticheatBan } = require('../database/anticheatDb');
 
 const ANSWERS = new Map();
 const HUMAN_KEYWORDS = ['human', 'staff', 'person', 'agent', 'real person', 'człowiek', 'personel', 'humano', 'persona real'];
@@ -280,37 +281,72 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       });
     }
 
-    // Ban appeal specific: check for ban ID
+    // Ban appeal specific: check for ban ID / player name
     if (type === 'ban_appeal') {
       const banId = extractBanId(answerText);
-      if (banId) {
+      const playerName = extractPlayerName(answerText);
+      const identifier = playerName || banId;
+
+      if (identifier) {
         await channel.send({
           embeds: [createEmbed({
             title: i18n.t('auto.ban.checking_title', userId),
-            description: i18n.t('auto.ban.checking_desc', userId, { banId }),
+            description: i18n.t('auto.ban.checking_desc', userId, { banId: identifier }),
             color: config.embed.color.primary,
           })],
         });
 
-        const banInfo = await lookupBan(channel.guild, banId);
-        if (banInfo) {
+        // Discord guild ban lookup (only if a Discord ID was provided)
+        if (banId) {
+          const banInfo = await lookupBan(channel.guild, banId);
+          if (banInfo) {
+            await channel.send({
+              embeds: [createEmbed({
+                title: i18n.t('auto.ban.found_title', userId),
+                description: i18n.t('auto.ban.found_desc', userId, {
+                  tag: banInfo.user.tag,
+                  id: banInfo.user.id,
+                  reason: banInfo.reason || 'No reason recorded',
+                }),
+                color: config.embed.color.success,
+                footerText: i18n.t('auto.ban.found_footer', userId),
+              })],
+            });
+          } else {
+            await channel.send({
+              embeds: [createEmbed({
+                title: i18n.t('auto.ban.not_found_title', userId),
+                description: i18n.t('auto.ban.not_found_desc', userId, { banId }),
+                color: config.embed.color.error,
+              })],
+            });
+          }
+        }
+
+        // Anticheat DB lookup (by player name, UUID, or ban ID)
+        const acBan = await lookupAnticheatBan(identifier);
+        if (acBan) {
+          const bannedAt = acBan.banned_at ? new Date(acBan.banned_at).toLocaleString() : 'Unknown';
+          const expires = acBan.expires_at ? new Date(acBan.expires_at).toLocaleString() : 'Permanent';
+          const status = acBan.unbanned ? 'Unbanned' : 'Active';
           await channel.send({
             embeds: [createEmbed({
-              title: i18n.t('auto.ban.found_title', userId),
-              description: i18n.t('auto.ban.found_desc', userId, {
-                tag: banInfo.user.tag,
-                id: banInfo.user.id,
-                reason: banInfo.reason || 'No reason recorded',
+              title: i18n.t('auto.ban.anticheat_found_title', userId),
+              description: i18n.t('auto.ban.anticheat_found_desc', userId, {
+                playerName: acBan.player_name || 'Unknown',
+                uuid: acBan.player_uuid || 'N/A',
+                hackType: acBan.check_name || 'Unknown',
+                bannedAt,
+                expires,
+                status,
               }),
-              color: config.embed.color.success,
-              footerText: i18n.t('auto.ban.found_footer', userId),
+              color: config.embed.color.warning,
             })],
           });
-        } else {
+        } else if (process.env.ANTICHEAT_DB_HOST) {
           await channel.send({
             embeds: [createEmbed({
-              title: i18n.t('auto.ban.not_found_title', userId),
-              description: i18n.t('auto.ban.not_found_desc', userId, { banId }),
+              title: i18n.t('auto.ban.anticheat_not_found', userId),
               color: config.embed.color.error,
             })],
           });
@@ -725,6 +761,12 @@ function extractBanId(text) {
   if (/^\d{17,19}$/.test(text.trim())) return text.trim();
 
   return null;
+}
+
+function extractPlayerName(text) {
+  // Minecraft usernames: 3-16 chars, alphanumeric + underscore, start with letter
+  const nameMatch = text.match(/\b[A-Za-z][A-Za-z0-9_]{2,15}\b/);
+  return nameMatch ? nameMatch[0] : null;
 }
 
 function getTicketTypeName(type) {
