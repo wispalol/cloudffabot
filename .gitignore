@@ -10,3 +10,6 @@ pom.xml
 src/main/
 target/
 
+
+# Stakpak session files
+.stakpak/session*

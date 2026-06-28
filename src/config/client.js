@@ -186,6 +186,16 @@ const config = {
   database: {
     path: process.env.DATABASE_PATH || './database.sqlite',
   },
+
+  // ─── Search / External APIs ────────────────────────────
+  search: {
+    apiKey: process.env.GOOGLE_API_KEY,
+    cx: process.env.GOOGLE_CX,
+  },
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY,
+    url: process.env.TAVILY_API_URL,
+  },
 };
 
 module.exports = config;
