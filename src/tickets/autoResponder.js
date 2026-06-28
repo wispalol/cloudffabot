@@ -5,6 +5,9 @@ const logger = require('../config/logger');
 const i18n = require('../i18n');
 const { lookupAnticheatBan } = require('../database/anticheatDb');
 const { getDb } = require('../database/database');
+const { generateTranscript } = require('../utils/transcript');
+const path = require('path');
+const fs = require('fs');
 
 const ANSWERS = new Map();
 const HUMAN_KEYWORDS = ['human', 'staff', 'person', 'agent', 'real person', 'człowiek', 'personel', 'humano', 'persona real'];
@@ -565,9 +568,24 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
     })],
   });
 
-  await sendAutoHelp(channel, member, type, answers, ticketId, userId);
+  const analysis = await sendAutoHelp(channel, member, type, answers, ticketId, userId);
 
   await new Promise((r) => setTimeout(r, 1000));
+
+  const isDenied = analysis && (analysis.verdict === 'fair' || analysis.verdict === 'anticheat_confirmed');
+  if (isDenied) {
+    await channel.send({
+      embeds: [createEmbed({
+        title: '🔒 This appeal is now closed.',
+        description: 'Your case has been logged and the channel will be deleted shortly. A transcript has been saved for staff reference.',
+        color: config.embed.color.error,
+      })],
+    });
+    await new Promise((r) => setTimeout(r, 3000));
+    await autoCloseTicket(channel, ticketId, userId);
+    ANSWERS.delete(ticketId);
+    return;
+  }
 
   await channel.send({
     embeds: [createEmbed({
@@ -720,6 +738,7 @@ async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
           ],
         })],
       });
+      return analysis;
       break;
     }
 
@@ -885,6 +904,39 @@ async function closeAndDeleteTicket(channel, ticketId, userId) {
     await channel.delete();
   } catch (error) {
     logger.error('Error auto-closing ticket:', error);
+  }
+}
+
+async function autoCloseTicket(channel, ticketId, userId) {
+  try {
+    const html = await generateTranscript(channel, ticketId);
+
+    const transcriptDir = path.join(__dirname, '../../transcripts');
+    if (!fs.existsSync(transcriptDir)) {
+      fs.mkdirSync(transcriptDir, { recursive: true });
+    }
+    const filePath = path.join(transcriptDir, `${ticketId}.html`);
+    fs.writeFileSync(filePath, html);
+
+    const logChannel = channel.guild.channels.cache.get(config.ticket.logChannelId);
+    if (logChannel) {
+      await logChannel.send({
+        embeds: [createEmbed({
+          title: '📄 Ban Appeal — Auto-Closed (Denied)',
+          description: `Ticket \`${ticketId}\` by <@${userId}> was automatically closed after the appeal was denied.`,
+          color: config.embed.color.error,
+          timestamp: new Date(),
+        })],
+        files: [filePath],
+      });
+    }
+
+    const { run } = getDb();
+    run(`UPDATE tickets SET status = 'deleted' WHERE ticket_id = ?`, [ticketId]);
+
+    await channel.delete();
+  } catch (error) {
+    logger.error('Error auto-closing ticket after denied verdict:', error);
   }
 }
 
