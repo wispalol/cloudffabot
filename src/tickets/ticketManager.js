@@ -119,6 +119,30 @@ async function handleTicketCreate(interaction) {
       });
     }
 
+    if (config.ticket.adminRoleId) {
+      overwrites.push({
+        id: config.ticket.adminRoleId,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.ManageMessages,
+          PermissionFlagsBits.ManageChannels,
+        ],
+      });
+    }
+
+    if (guild.ownerId) {
+      overwrites.push({
+        id: guild.ownerId,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+        ],
+      });
+    }
+
     const ticketChannel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
