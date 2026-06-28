@@ -528,7 +528,7 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
 function analyzeBanAppeal(answers) {
   const allText = answers.map(a => a.answer.toLowerCase()).join(' ');
 
-  const cheatClients = ['meteor client', 'meteor', 'wurst', 'lunar client hacks', 'badlion hacks', 'impact client',
+  const cheatClients = ['meteor client', 'meteor', 'metore client', 'metore', 'metor', 'wurst', 'lunar client hacks', 'badlion hacks', 'impact client',
     'inertia client', 'aristois', 'future client', 'vape', 'dortware', 'bongware', 'crystal client',
     'autoclicker', 'auto clicker', 'killaura', 'kill aura', 'reach', 'aimbot', 'aim assist',
     'bhop', 'speedhack', 'fly hack', 'flyhack', 'x-ray', 'xray', 'wallhack', 'wall hack',
@@ -536,12 +536,18 @@ function analyzeBanAppeal(answers) {
     'hacked client', 'cheat client', 'hax', 'client hacks', 'cheating client', 'mods client',
     'opcional', 'sigma', 'liquidbounce', 'novoline', 'vape v4', 'vapev4'];
 
-  const cheatAdmission = new RegExp(`(i|was|used|using|was using|been using|had|installed|downloaded|tried|got|have|had been).*(?:${cheatClients.join('|')})`, 'i').test(allText);
+  // Sort by length descending (longest first) to match multi-word clients before single words
+  const sortedClients = [...cheatClients].sort((a, b) => b.length - a.length);
+  const escapedClients = sortedClients.map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
-  const admitsCheating = cheatAdmission ||
+  // Any mention of a known cheat client counts as admission (no preceding verb required)
+  const cheatClientMention = new RegExp(`(?:${escapedClients.join('|')})`, 'i').test(allText);
+
+  const admitsCheating = cheatClientMention ||
     /(i|admit|confess|yeah|yes|tbf|honestly|ill|i'll|i have been|i was|i've been).*(cheating|hacking|exploit|using.*mods)/i.test(allText) ||
     /(caught|banned|punished).*(cheating|hacking|exploit)/i.test(allText) ||
-    /(i|was).*(using|running|had).*(hacked|cheat|unfair|illegal)/i.test(allText);
+    /(i|was).*(using|running|had).*(hacked|cheat|unfair|illegal)/i.test(allText) ||
+    /(joined|play|played|download|downloaded|install|installed|tried|got|have).*(?:${escapedClients.join('|')})/i.test(allText);
 
   const admitsFault = /i (did|was) (wrong|guilty)|i (admit|confess|accept|take responsibility|broke|violated|understand why|understand the reason)|przepraszam|przyznaję|me equivoqué|lo siento|asumo|acepto/i.test(allText);
 
