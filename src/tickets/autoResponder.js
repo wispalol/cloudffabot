@@ -285,8 +285,9 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     if (type === 'ban_appeal') {
       const banId = extractBanId(answerText);
       const playerName = extractPlayerName(answerText);
+      const banStringId = extractBanStringId(answerText);
       const antiCheatId = extractNumericId(answerText);
-      const identifier = playerName || antiCheatId || banId;
+      const identifier = playerName || banStringId || antiCheatId || banId;
 
       if (identifier) {
         await channel.send({
@@ -808,6 +809,12 @@ function extractNumericId(text) {
     if (!isNaN(n) && n > 0) return token;
   }
   return null;
+}
+
+function extractBanStringId(text) {
+  // Format: CS-C4A5BC69-19F0E9FE556-1  (prefix-hex-hex-counter)
+  const match = text.match(/\b[A-Z]{2}-[A-Z0-9]+-[A-Z0-9]+-\d+\b/);
+  return match ? match[0] : null;
 }
 
 function getTicketTypeName(type) {

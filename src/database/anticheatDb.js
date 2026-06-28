@@ -64,7 +64,14 @@ async function lookupAnticheatBan(query) {
       if (rows.length > 0) return rows[0];
     }
 
-    // Search by ban_id (auto-increment integer)
+    // Search by ban_id (string format: XX-XXXX-XXXX-N or plain integer)
+    [rows] = await pool.query(
+      'SELECT * FROM opmcheck_bans WHERE ban_id = ? ORDER BY ban_id DESC LIMIT 1',
+      [trimmed]
+    );
+    if (rows.length > 0) return rows[0];
+
+    // Search by ban_id as integer fallback
     const banId = parseInt(trimmed, 10);
     if (!isNaN(banId)) {
       [rows] = await pool.query(
