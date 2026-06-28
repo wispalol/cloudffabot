@@ -69,6 +69,8 @@ async function searchGoogle(query, num = 3) {
       if (!res.ok) {
         const text = await res.text();
         logger.error('Google Search API error', { status: res.status, body: text });
+        // Return a special item to indicate API error if helpful
+        return { items: [], searchInformation: { source: 'google', error: res.status, errorText: text } };
       } else {
         const data = await res.json();
         if (data.items && data.items.length > 0) {

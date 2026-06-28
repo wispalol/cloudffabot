@@ -277,12 +277,19 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
         const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
         
         try {
-          const { items } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchGoogle(query, 3);
           
           const searchEmbed = new EmbedBuilder()
             .setTitle(`🔍 I found some info for: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
             .setColor(config.embed.color.primary)
             .setFooter({ text: 'I hope this helps while you wait for staff!' });
+
+          if (searchInformation?.error) {
+            searchEmbed.setDescription(`⚠️ I tried to search Google but encountered an issue (Error ${searchInformation.error}). A staff member will be with you shortly!`);
+            await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
+            await new Promise((r) => setTimeout(r, 5000));
+            return;
+          }
 
           if (items && items.length > 0) {
             const summary = summarizeFromItems(items, 500);
@@ -320,11 +327,13 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             await new Promise((r) => setTimeout(r, 5000));
           } else {
             // No direct results found, but let the user know we tried
-            searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on Google. A staff member will be with you shortly to assist!`);
+            searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on Google. A staff member will be with you shortly to assist!
+            
+            *Tip: Make sure your question is clear and specific for the best results.*`);
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
             
             // Wait a few seconds before moving on
-            await new Promise((r) => setTimeout(r, 4000));
+            await new Promise((r) => setTimeout(r, 5000));
           }
         } catch (err) {
           logger.error('Search during ticket collection failed:', err);
