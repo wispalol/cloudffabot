@@ -3,8 +3,10 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Partials, Collection } = require('discord.js');
 const logger = require('./src/config/logger');
 const { connectDatabase, getDb } = require('./src/database/database');
+const { connectAnticheatDb } = require('./src/database/anticheatDb');
 const { loadCommands } = require('./src/handlers/commandHandler');
 const { loadEvents } = require('./src/handlers/eventHandler');
+const { startBanPoller } = require('./src/handlers/banPoller');
 const i18n = require('./src/i18n');
 
 const client = new Client({
@@ -50,6 +52,9 @@ async function start() {
 
     await loadEvents(client);
     logger.info('Events loaded.');
+
+    await connectAnticheatDb();
+    startBanPoller(client);
 
     await client.login(process.env.TOKEN);
     logger.info('Bot logged in successfully.');

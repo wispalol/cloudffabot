@@ -175,6 +175,11 @@ const config = {
     giveaway: process.env.EMOJI_GIVEAWAY || '🎉',
   },
 
+  // ─── Anticheat (MySQL) ─────────────────────────────────
+  anticheat: {
+    banChannelId: process.env.ANTICHEAT_BAN_CHANNEL_ID,
+  },
+
   // ─── Database ──────────────────────────────────────────
   database: {
     path: process.env.DATABASE_PATH || './database.sqlite',
