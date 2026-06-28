@@ -528,6 +528,21 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
 function analyzeBanAppeal(answers) {
   const allText = answers.map(a => a.answer.toLowerCase()).join(' ');
 
+  const cheatClients = ['meteor client', 'meteor', 'wurst', 'lunar client hacks', 'badlion hacks', 'impact client',
+    'inertia client', 'aristois', 'future client', 'vape', 'dortware', 'bongware', 'crystal client',
+    'autoclicker', 'auto clicker', 'killaura', 'kill aura', 'reach', 'aimbot', 'aim assist',
+    'bhop', 'speedhack', 'fly hack', 'flyhack', 'x-ray', 'xray', 'wallhack', 'wall hack',
+    'forcefield', 'force field', 'nofall', 'blink', 'antivoid', 'cavefinder', 'esp',
+    'hacked client', 'cheat client', 'hax', 'client hacks', 'cheating client', 'mods client',
+    'opcional', 'sigma', 'liquidbounce', 'novoline', 'vape v4', 'vapev4'];
+
+  const cheatAdmission = new RegExp(`(i|was|used|using|was using|been using|had|installed|downloaded|tried|got|have|had been).*(?:${cheatClients.join('|')})`, 'i').test(allText);
+
+  const admitsCheating = cheatAdmission ||
+    /(i|admit|confess|yeah|yes|tbf|honestly|ill|i'll|i have been|i was|i've been).*(cheating|hacking|exploit|using.*mods)/i.test(allText) ||
+    /(caught|banned|punished).*(cheating|hacking|exploit)/i.test(allText) ||
+    /(i|was).*(using|running|had).*(hacked|cheat|unfair|illegal)/i.test(allText);
+
   const admitsFault = /i (did|was) (wrong|guilty)|i (admit|confess|accept|take responsibility|broke|violated|understand why|understand the reason)|przepraszam|przyznaję|me equivoqué|lo siento|asumo|acepto/i.test(allText);
 
   const showsRemorse = /sorry|apologize|regret|won't (happen|do)|never (again|do)|przepraszam|ża\u0142uję|lo siento|arrepiento|disculpa/i.test(allText);
@@ -540,26 +555,32 @@ function analyzeBanAppeal(answers) {
 
   const noUnderstanding = /(don't know|don't understand|no idea|not sure|confused|wasn't told|no reason).*(ban|why|reason)/i.test(allText);
 
-  let score = 0;
-  if (admitsFault) score += 2;
-  if (showsRemorse) score += 2;
-  if (hasChangePlan) score += 1;
-  if (denies) score -= 1;
-  if (blamesOthers) score -= 2;
-  if (noUnderstanding) score -= 1;
-
-  const strongDenial = /(didn't|did not|would never|wasn't me|false|wrongful|unfair|innocent|mistake).*(ban|punish|action)/i.test(allText) && !admitsFault;
+  const strongDenial = /(didn't|did not|would never|wasn't me|false|wrongful|unfair|innocent|mistake).*(ban|punish|action)/i.test(allText) && !admitsFault && !admitsCheating;
 
   let verdict;
-  if (score >= 3 && admitsFault) {
+  if (admitsCheating) {
     verdict = 'fair';
-  } else if (score <= 0 || strongDenial) {
+  } else if (strongDenial) {
     verdict = 'unfair';
   } else {
-    verdict = 'mixed';
+    let score = 0;
+    if (admitsFault) score += 2;
+    if (showsRemorse) score += 2;
+    if (hasChangePlan) score += 1;
+    if (denies) score -= 1;
+    if (blamesOthers) score -= 2;
+    if (noUnderstanding) score -= 1;
+
+    if (score >= 3) {
+      verdict = 'fair';
+    } else if (score <= 0) {
+      verdict = 'unfair';
+    } else {
+      verdict = 'mixed';
+    }
   }
 
-  return { verdict, score, admitsFault, showsRemorse, hasChangePlan, denies, blamesOthers, noUnderstanding };
+  return { verdict, admitsCheating, admitsFault, showsRemorse, hasChangePlan, denies, blamesOthers, noUnderstanding };
 }
 
 async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {

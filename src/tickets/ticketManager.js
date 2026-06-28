@@ -138,15 +138,10 @@ async function handleTicketCreate(interaction) {
 
     const typeName = getTicketTypeName(type);
     const typeEmoji = getTicketTypeEmoji(type);
-    const questions = i18n.getQuestions(type, creatorId);
-
-    const questionsStr = questions
-      .map((q, i) => `**${i + 1}.** ${q}`)
-      .join('\n');
 
     const initialEmbed = createEmbed({
       title: i18n.t('ticket.create.initial_title', creatorId, { emoji: typeEmoji, type: typeName }),
-      description: `${i18n.t('ticket.create.initial_desc', creatorId, { member })}\n\n${questionsStr}`,
+      description: i18n.t('ticket.create.initial_desc', creatorId, { member }),
       color: config.embed.color.primary,
       fields: [
         {
