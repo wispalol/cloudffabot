@@ -145,7 +145,7 @@ module.exports = {
       title: '📌 Question {num} of {total}',
       desc: '> {question}',
       tip_ban: '💡 Tip',
-      tip_ban_value: 'If you have a **Ban ID** or **User ID** from your ban notification, include it in your answer so I can look up the details.',
+      tip_ban_value: 'Please provide your **Minecraft IGN** (in-game username) so I can look up your ban record in our anticheat database.',
       instructions: '💬 Instructions',
       instructions_value: 'Please type your answer below. You have **5 minutes**.',
       footer: 'Question {num} of {total}',

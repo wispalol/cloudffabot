@@ -950,9 +950,41 @@ function extractBanId(text) {
 }
 
 function extractPlayerName(text) {
-  // Minecraft usernames: 3-16 chars, alphanumeric + underscore, start with letter
-  const nameMatch = text.match(/\b[A-Za-z][A-Za-z0-9_]{2,15}\b/);
-  return nameMatch ? nameMatch[0] : null;
+  const commonWords = new Set([
+    'my','am','is','the','what','why','how','because','i','you','he','she','it','we','they',
+    'this','that','these','those','a','an','and','but','or','for','so','yet','with','from','at',
+    'by','to','in','of','on','not','no','yes','do','does','did','has','have','had','can','could',
+    'will','would','shall','should','may','might','must','was','were','are','been','being','name',
+    'ign','minecraft','username','user','discord','id','ban','appeal','please','help','here','there',
+    'got','get','was','banned','playing','server','then','than','just','also','very','really',
+  ]);
+
+  const cleaned = text.trim();
+  // Single word — likely the IGN
+  if (!cleaned.includes(' ')) {
+    const single = cleaned.match(/^[A-Za-z][A-Za-z0-9_]{2,15}$/);
+    if (single) return single[0];
+    return null;
+  }
+
+  // Pattern: "my ign is X", "ign: X", "X is my ign/name", "username: X", "name: X"
+  const patternMatches = cleaned.match(
+    /(?:my\s+)?(?:ign|name|username|minecraft\s*name)(?:\s+is|\s*:|:)?\s+([A-Za-z][A-Za-z0-9_]{2,15})\b/i
+  );
+  if (patternMatches) return patternMatches[1];
+
+  // Fallback: last non-common word matching IGN pattern
+  const words = cleaned.match(/\b[A-Za-z][A-Za-z0-9_]{2,15}\b/g);
+  if (words) {
+    for (let i = words.length - 1; i >= 0; i--) {
+      if (!commonWords.has(words[i].toLowerCase())) {
+        return words[i];
+      }
+    }
+    return words[words.length - 1];
+  }
+
+  return null;
 }
 
 function extractNumericId(text) {

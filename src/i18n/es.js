@@ -145,7 +145,7 @@ module.exports = {
       title: '📌 Pregunta {num} de {total}',
       desc: '> {question}',
       tip_ban: '💡 Consejo',
-      tip_ban_value: 'Si tienes un **ID de Baneo** o **ID de Usuario** de tu notificación de baneo, inclúyelo en tu respuesta para que pueda verificar los detalles.',
+      tip_ban_value: 'Proporciona tu **nombre de usuario de Minecraft (IGN)** para que pueda buscar tu registro de baneo en nuestra base de datos.',
       instructions: '💬 Instrucciones',
       instructions_value: 'Por favor escribe tu respuesta abajo. Tienes **5 minutos**.',
       footer: 'Pregunta {num} de {total}',
