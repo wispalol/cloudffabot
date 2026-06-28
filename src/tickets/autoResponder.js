@@ -285,9 +285,21 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             .setFooter({ text: 'I hope this helps while you wait for staff!' });
 
           if (searchInformation?.error) {
-            searchEmbed.setDescription(`⚠️ I tried to search Google but encountered an issue (Error ${searchInformation.error}). A staff member will be with you shortly!`);
+            let errorDesc = `⚠️ I tried to search Google but encountered an issue (Error ${searchInformation.error}). A staff member will be with you shortly!`;
+            
+            // Specifically handle the "service disabled" 403 error
+            if (searchInformation.error === 403 && searchInformation.errorText?.includes('SERVICE_DISABLED')) {
+              errorDesc = `⚠️ **Google Custom Search API is disabled.**
+              
+              To fix this, please visit the link below and click **"ENABLE"**:
+              https://console.cloud.google.com/apis/library/customsearch.googleapis.com
+              
+              Once enabled, wait a minute and I'll be able to provide search results again!`;
+            }
+            
+            searchEmbed.setDescription(errorDesc);
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
-            await new Promise((r) => setTimeout(r, 5000));
+            await new Promise((r) => setTimeout(r, 8000));
             return;
           }
 
@@ -673,7 +685,9 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
     if (mainQuestion && mainQuestion.answer && mainQuestion.answer.length > 5) {
       const query = mainQuestion.answer.trim();
       try {
-        const { items } = await searchGoogle(query, 3);
+        const { items, searchInformation } = await searchGoogle(query, 3);
+        if (searchInformation?.error) return; // ignore errors here
+
         if (items && items.length > 0) {
           const searchEmbed = new EmbedBuilder()
             .setTitle(`🔍 Automatic Search: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)

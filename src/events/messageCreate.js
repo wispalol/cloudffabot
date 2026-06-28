@@ -48,7 +48,17 @@ module.exports = {
         const replyMsg = await message.reply({ content: `Searching for: **${query}**...` });
 
         try {
-          const { items } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchGoogle(query, 3);
+          
+          if (searchInformation?.error) {
+            const embed = new EmbedBuilder()
+              .setTitle(`Search: ${query}`)
+              .setColor('#FF0000')
+              .setDescription(`⚠️ I encountered an error (Error ${searchInformation.error}) while searching. This usually means the 'Custom Search API' needs to be enabled in your Google Cloud Console. A staff member will be with you shortly!`);
+            
+            return replyMsg.edit({ content: null, embeds: [embed] });
+          }
+
           if (!items || items.length === 0) {
             const embed = new EmbedBuilder()
               .setTitle(`Search results for: ${query}`)
@@ -142,7 +152,17 @@ module.exports = {
 
         const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
         try {
-          const { items } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchGoogle(query, 3);
+          
+          if (searchInformation?.error) {
+            const embed = new EmbedBuilder()
+              .setTitle(`Answer: ${query}`)
+              .setColor('#FF0000')
+              .setDescription(`⚠️ I encountered an error (Error ${searchInformation.error}) while searching. This usually means the 'Custom Search API' needs to be enabled in your Google Cloud Console. A staff member will be with you shortly!`);
+            
+            return replyMsg.edit({ content: null, embeds: [embed] });
+          }
+
           if (!items || items.length === 0) {
             // If we're in a ticket channel and didn't find anything, just delete the "searching" message to keep it clean
             if (isTicketChannel && !isMentioned) {
