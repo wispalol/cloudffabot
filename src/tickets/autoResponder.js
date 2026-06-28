@@ -309,6 +309,10 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
 
             const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed], components });
+            
+            // Wait an extra 5 seconds so the user can actually read the result
+            // before the next question scrolls it away
+            await new Promise((r) => setTimeout(r, 5000));
           } else {
             // No results, just remove the searching message
             await searchStatusMsg.delete().catch(() => {});

@@ -63,15 +63,14 @@ async function searchGoogle(query, num = 3) {
         const text = await res.text();
         logger.error('Google Search API error', { status: res.status, body: text });
         // Return null so it falls back to DDG
-        return null;
       } else {
         const data = await res.json();
-        if (!data.items || data.items.length === 0) return null;
-        return { items: data.items || [], searchInformation: data.searchInformation || {} };
+        if (data.items && data.items.length > 0) {
+          return { items: data.items || [], searchInformation: data.searchInformation || {} };
+        }
       }
     } catch (err) {
       logger.error('Google Search request failed:', err);
-      return null;
     }
   }
 
