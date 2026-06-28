@@ -132,6 +132,19 @@ async function handleTicketCreate(interaction) {
       });
     }
 
+    if (config.ticket.managerRoleId) {
+      overwrites.push({
+        id: config.ticket.managerRoleId,
+        allow: [
+          PermissionFlagsBits.ViewChannel,
+          PermissionFlagsBits.SendMessages,
+          PermissionFlagsBits.ReadMessageHistory,
+          PermissionFlagsBits.ManageMessages,
+          PermissionFlagsBits.ManageChannels,
+        ],
+      });
+    }
+
     if (guild.ownerId) {
       overwrites.push({
         id: guild.ownerId,

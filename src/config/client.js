@@ -16,6 +16,7 @@ const config = {
     categoryId: process.env.TICKET_CATEGORY_ID,
     staffRoleId: process.env.TICKET_STAFF_ROLE_ID,
     adminRoleId: process.env.TICKET_ADMIN_ROLE_ID,
+    managerRoleId: process.env.TICKET_MANAGER_ROLE_ID,
     logChannelId: process.env.TICKET_LOG_CHANNEL_ID,
     panelChannelId: process.env.TICKET_PANEL_CHANNEL_ID,
     // Questions shown per ticket type when the ticket opens
