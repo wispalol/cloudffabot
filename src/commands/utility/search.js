@@ -40,6 +40,27 @@ module.exports = {
     try {
       const { items, searchInformation } = await searchGoogle(query, num);
 
+      if (searchInformation?.error) {
+        const embed = new EmbedBuilder()
+          .setTitle(`Search: ${query}`)
+          .setColor('#FF0000');
+        
+        let errorDesc = `⚠️ I encountered an error (Error ${searchInformation.error}) while searching. This usually means the 'Custom Search API' needs to be enabled in your Google Cloud Console. A staff member will be with you shortly!`;
+        
+        // Specifically handle the "service disabled" 403 error
+        if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
+          errorDesc = `⚠️ **Google Custom Search API is disabled.**
+          
+          To fix this, please visit the link below and click **"ENABLE"**:
+          https://console.cloud.google.com/apis/library/customsearch.googleapis.com
+          
+          Once enabled, wait a minute and I'll be able to provide search results again!`;
+        }
+        
+        embed.setDescription(errorDesc);
+        return interaction.editReply({ embeds: [embed] });
+      }
+
       // Build embed with top results
       const source = searchInformation?.source === 'google' ? 'Google' : (searchInformation?.source === 'tavily' ? 'Tavily' : 'Web');
       const embed = new EmbedBuilder()

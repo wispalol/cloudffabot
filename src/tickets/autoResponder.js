@@ -288,7 +288,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             let errorDesc = `⚠️ I tried to search Google but encountered an issue (Error ${searchInformation.error}). A staff member will be with you shortly!`;
             
             // Specifically handle the "service disabled" 403 error
-            if (searchInformation.error === 403 && searchInformation.errorText?.includes('SERVICE_DISABLED')) {
+            if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
               errorDesc = `⚠️ **Google Custom Search API is disabled.**
               
               To fix this, please visit the link below and click **"ENABLE"**:
