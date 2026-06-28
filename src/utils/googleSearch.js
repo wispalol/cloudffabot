@@ -62,14 +62,16 @@ async function searchGoogle(query, num = 3) {
       if (!res.ok) {
         const text = await res.text();
         logger.error('Google Search API error', { status: res.status, body: text });
-        // Instead of throwing, we might want to fall back to DDG
-        // throw err;
+        // Return null so it falls back to DDG
+        return null;
       } else {
         const data = await res.json();
+        if (!data.items || data.items.length === 0) return null;
         return { items: data.items || [], searchInformation: data.searchInformation || {} };
       }
     } catch (err) {
       logger.error('Google Search request failed:', err);
+      return null;
     }
   }
 
@@ -103,16 +105,24 @@ async function searchGoogle(query, num = 3) {
       }
     }
 
-    if (Array.isArray(json.Results) && json.Results.length) {
-      json.Results.forEach((r) => pushTopic(r));
+    if (json.AbstractText && json.AbstractText.length) {
+      items.push({
+        title: json.Heading || 'Instant Answer',
+        snippet: json.AbstractText,
+        link: json.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
+      });
     }
 
-    if (json.Answer && typeof json.Answer === 'string') {
+    if (json.Answer && typeof json.Answer === 'string' && json.Answer.length) {
       items.push({
         title: 'Instant Answer',
         snippet: json.Answer,
         link: json.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
       });
+    }
+
+    if (Array.isArray(json.Results) && json.Results.length) {
+      json.Results.forEach((r) => pushTopic(r));
     }
 
     if (Array.isArray(json.RelatedTopics) && json.RelatedTopics.length) {
@@ -125,10 +135,14 @@ async function searchGoogle(query, num = 3) {
       });
     }
 
-    // If nothing found, include an entry pointing to the DuckDuckGo search page
+    // If nothing found in DDG API, include an entry pointing to the search page
     if (items.length === 0) {
       const ddgSearchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-      items.push({ title: `Search on DuckDuckGo`, snippet: `No instant answer; open search results.`, link: ddgSearchUrl });
+      items.push({ 
+        title: `Search for "${query}"`, 
+        snippet: `No instant answer found. Click below to see full results on the web.`, 
+        link: ddgSearchUrl 
+      });
     }
 
     return { items: items.slice(0, num), searchInformation: { source: 'duckduckgo', totalResults: items.length } };
