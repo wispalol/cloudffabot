@@ -282,8 +282,9 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       const banId = extractBanId(answerText);
       const playerName = extractPlayerName(answerText);
       const banStringId = extractBanStringId(answerText);
+      const uuid = extractUuid(answerText);
       const antiCheatId = extractNumericId(answerText);
-      const identifier = banStringId || playerName || antiCheatId || banId;
+      const identifier = banStringId || uuid || playerName || antiCheatId || banId;
 
       if (identifier) {
         await channel.send({
@@ -577,14 +578,29 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
 
   const isDenied = analysis && (analysis.verdict === 'fair' || analysis.verdict === 'anticheat_confirmed');
   if (isDenied) {
+    const isAcConfirmed = analysis.verdict === 'anticheat_confirmed';
+    const verdictLabel = isAcConfirmed ? 'Cheating Confirmed' : 'Appeal Denied';
+    const verdictColor = isAcConfirmed ? 0xED4245 : 0x57F287;
+    let verdictFields = [];
+    if (isAcConfirmed && analysis.hackLabel) {
+      verdictFields.push(
+        { name: '🚨 Verdict', value: `**Cheating Confirmed** — our systems detected \`${analysis.hackLabel}\` on your account.`, inline: false },
+      );
+    } else {
+      verdictFields.push(
+        { name: '🚨 Verdict', value: '**Appeal Denied** — your responses indicated that you used unfair modifications.', inline: false },
+      );
+    }
+
     await channel.send({
       embeds: [createEmbed({
-        title: '🔒 This appeal is now closed.',
-        description: 'Your case has been logged and the channel will be deleted shortly. A transcript has been saved for staff reference.',
-        color: config.embed.color.error,
+        title: '🔒 Appeal Closed — ' + verdictLabel,
+        description: 'Your case has been reviewed and a decision has been made. The channel will be deleted shortly.\n\nA transcript has been saved for staff reference. You will **not** be able to reopen this ticket.',
+        color: verdictColor,
+        fields: verdictFields,
       })],
     });
-    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, 5000));
     await autoCloseTicket(channel, ticketId, userId);
     ANSWERS.delete(ticketId);
     return;
@@ -990,6 +1006,16 @@ function extractPlayerName(text) {
     return words[words.length - 1];
   }
 
+  return null;
+}
+
+function extractUuid(text) {
+  // With dashes: 8-4-4-4-12
+  const withDashes = text.match(/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/);
+  if (withDashes) return withDashes[0];
+  // Without dashes: 32 hex chars (only if not just a word starting with a-f)
+  const withoutDashes = text.match(/\b[0-9a-fA-F]{32}\b/);
+  if (withoutDashes) return withoutDashes[0];
   return null;
 }
 
