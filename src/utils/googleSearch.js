@@ -10,6 +10,13 @@ async function searchGoogle(query, num = 3) {
   const apiKey = config.search?.apiKey || process.env.GOOGLE_API_KEY;
   const cx = config.search?.cx || process.env.GOOGLE_CX;
 
+  logger.debug('Search credentials check', { 
+    hasApiKey: !!apiKey, 
+    hasCx: !!cx, 
+    apiKeyPrefix: apiKey ? apiKey.substring(0, 5) : 'none',
+    cxValue: cx
+  });
+
   // Tavily primary support: if configured, use Tavily API first
   const tavilyKey = config.tavily?.apiKey || process.env.TAVILY_API_KEY;
   const tavilyUrl = config.tavily?.url || process.env.TAVILY_API_URL;
@@ -58,6 +65,7 @@ async function searchGoogle(query, num = 3) {
       url.searchParams.set('q', query);
       url.searchParams.set('num', String(Math.min(Math.max(num, 1), 10)));
 
+      logger.info('Performing Google Search', { query });
       const res = await fetch(url.toString());
       if (!res.ok) {
         const text = await res.text();
@@ -65,7 +73,10 @@ async function searchGoogle(query, num = 3) {
       } else {
         const data = await res.json();
         if (data.items && data.items.length > 0) {
+          logger.info('Google Search results found', { count: data.items.length });
           return { items: data.items, searchInformation: { source: 'google', totalResults: data.searchInformation?.totalResults } };
+        } else {
+          logger.info('Google Search returned no items');
         }
       }
     } catch (err) {
@@ -135,6 +146,7 @@ async function searchGoogle(query, num = 3) {
 
     // If nothing found in any provider, return empty items array
     // The consumer (autoResponder/search command) will handle showing the fallback message
+    logger.info('Returning DuckDuckGo results', { count: items.length });
     return { items: items.slice(0, num), searchInformation: { source: 'duckduckgo', totalResults: items.length } };
   } catch (error) {
     logger.error('Fallback search failed:', error);
