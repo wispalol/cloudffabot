@@ -289,12 +289,15 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             
             // Specifically handle the "service disabled" 403 error
             if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
-              errorDesc = `⚠️ **Google Custom Search API is disabled.**
+              errorDesc = `⚠️ **Google Custom Search API issue.**
               
-              To fix this, please visit the link below and click **"ENABLE"**:
-              https://console.cloud.google.com/apis/library/customsearch.googleapis.com
+              It seems the API is still not fully active or configured. Please check:
               
-              Once enabled, wait a minute and I'll be able to provide search results again!`;
+              1. **Enable the API:** Click **"ENABLE"** at [this link](https://console.cloud.google.com/apis/library/customsearch.googleapis.com).
+              2. **Link Billing:** Ensure a **Billing Account** is linked to your project [here](https://console.cloud.google.com/billing). (Google requires this even for the free tier).
+              3. **API Key Restrictions:** Ensure your API Key doesn't have restrictions that block my host.
+              
+              Once fixed, wait a minute and try again!`;
             }
             
             searchEmbed.setDescription(errorDesc);

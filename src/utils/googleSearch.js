@@ -64,7 +64,11 @@ async function searchGoogle(query, num = 3) {
       url.searchParams.set('q', query);
       url.searchParams.set('num', String(Math.min(Math.max(num, 1), 10)));
 
-      logger.info('Performing Google Search', { query });
+      logger.info('Performing Google Search', { 
+        query,
+        apiKey: apiKey ? `${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 5)}` : 'none',
+        cx
+      });
       const res = await fetch(url.toString());
       if (!res.ok) {
         const text = await res.text();
