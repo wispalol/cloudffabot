@@ -285,7 +285,8 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     if (type === 'ban_appeal') {
       const banId = extractBanId(answerText);
       const playerName = extractPlayerName(answerText);
-      const identifier = playerName || banId;
+      const antiCheatId = extractNumericId(answerText);
+      const identifier = playerName || antiCheatId || banId;
 
       if (identifier) {
         await channel.send({
@@ -767,6 +768,17 @@ function extractPlayerName(text) {
   // Minecraft usernames: 3-16 chars, alphanumeric + underscore, start with letter
   const nameMatch = text.match(/\b[A-Za-z][A-Za-z0-9_]{2,15}\b/);
   return nameMatch ? nameMatch[0] : null;
+}
+
+function extractNumericId(text) {
+  // Anticheat ban ID (positive integer) — skips Discord-length IDs
+  const tokens = text.match(/\b\d{1,16}\b/g);
+  if (!tokens) return null;
+  for (const token of tokens) {
+    const n = parseInt(token, 10);
+    if (!isNaN(n) && n > 0) return token;
+  }
+  return null;
 }
 
 function getTicketTypeName(type) {
