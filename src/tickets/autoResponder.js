@@ -340,6 +340,22 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             })],
           });
 
+          // Store anticheat record for verdict display
+          const acAnswers = ANSWERS.get(ticketId) || [];
+          acAnswers.push({
+            question: '_anticheat_record',
+            answer: JSON.stringify({
+              hackLabel: hackLabel,
+              playerName: acBan.player_name || 'Unknown',
+              playerUuid: acBan.player_uuid || '',
+              bannedAt: acBan.banned_at || '',
+              expiresAt: acBan.expires_at || '',
+              unbanned: acBan.unbanned ? true : false,
+              banId: acBan.ban_id || '',
+            }),
+          });
+          ANSWERS.set(ticketId, acAnswers);
+
           // If the anticheat check_name matches a known hack type, skip straight to verdict
           const knownHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'timer', 'blink', 'phase', 'disabler'];
           const isKnownHack = knownHacks.some(h => hackLabel.toLowerCase().includes(h));
@@ -351,20 +367,6 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
                 color: 0xED4245,
               })],
             });
-            const acAnswers = ANSWERS.get(ticketId) || [];
-            acAnswers.push({
-              question: '_anticheat_record',
-              answer: JSON.stringify({
-                hackLabel: hackLabel,
-                playerName: acBan.player_name || 'Unknown',
-                playerUuid: acBan.player_uuid || '',
-                bannedAt: acBan.banned_at || '',
-                expiresAt: acBan.expires_at || '',
-                unbanned: acBan.unbanned ? true : false,
-                banId: acBan.ban_id || '',
-              }),
-            });
-            ANSWERS.set(ticketId, acAnswers);
             await new Promise((r) => setTimeout(r, 1500));
             return finishAutoResponse(channel, member, type, ticketId, userId);
           }
