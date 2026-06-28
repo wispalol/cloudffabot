@@ -277,8 +277,8 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       });
     }
 
-    // Ban appeal specific: check for ban ID / player name
-    if (type === 'ban_appeal') {
+    // Ban appeal specific: check for ban ID / player name (only on first question)
+    if (type === 'ban_appeal' && index === 0) {
       const banId = extractBanId(answerText);
       const playerName = extractPlayerName(answerText);
       const banStringId = extractBanStringId(answerText);
