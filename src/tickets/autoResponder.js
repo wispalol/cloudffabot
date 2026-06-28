@@ -880,10 +880,31 @@ async function closeAndDeleteTicket(channel, ticketId, userId) {
     const { run } = getDb();
     run(`UPDATE tickets SET status = 'deleted' WHERE ticket_id = ?`, [ticketId]);
 
+    await logTicketAction(channel.guild, 'Ticket auto-deleted (inactivity)', {
+      ticketId,
+      channel,
+    });
+
     await channel.delete();
   } catch (error) {
     logger.error('Error auto-closing ticket:', error);
   }
+}
+
+async function logTicketAction(guild, action, data) {
+  const logChannel = guild.channels.cache.get(config.ticket.logChannelId);
+  if (!logChannel) return;
+  await logChannel.send({
+    embeds: [createEmbed({
+      title: `${config.emoji.ticket} ${action}`,
+      fields: [
+        { name: 'Ticket', value: `\`${data.ticketId}\``, inline: true },
+        ...(data.channel ? [{ name: 'Channel', value: `${data.channel}`, inline: true }] : []),
+      ],
+      color: config.embed.color.warning,
+      timestamp: new Date(),
+    })],
+  });
 }
 
 module.exports = {
