@@ -50,7 +50,19 @@ module.exports = {
         try {
           const { items } = await searchGoogle(query, 3);
           if (!items || items.length === 0) {
-            return replyMsg.edit(`No results found for **${query}**.`);
+            const embed = new EmbedBuilder()
+              .setTitle(`Search results for: ${query}`)
+              .setColor('#5865F2')
+              .setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
+            
+            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+            const button = new ButtonBuilder()
+              .setLabel('Search on DuckDuckGo')
+              .setStyle(ButtonStyle.Link)
+              .setURL(ddgUrl);
+            
+            const components = [new ActionRowBuilder().addComponents(button)];
+            return replyMsg.edit({ content: null, embeds: [embed], components });
           }
 
           const embed = new EmbedBuilder()
@@ -139,7 +151,20 @@ module.exports = {
             if (isTicketChannel && !isMentioned) {
               return replyMsg.delete().catch(() => {});
             }
-            return replyMsg.edit(`I couldn't find anything for **${query}**.`);
+            
+            const embed = new EmbedBuilder()
+              .setTitle(`Answer: ${query}`)
+              .setColor('#5865F2')
+              .setDescription('I couldn\'t find a quick answer, but you can try searching on DuckDuckGo:');
+            
+            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+            const button = new ButtonBuilder()
+              .setLabel('Search on DuckDuckGo')
+              .setStyle(ButtonStyle.Link)
+              .setURL(ddgUrl);
+            
+            const components = [new ActionRowBuilder().addComponents(button)];
+            return replyMsg.edit({ content: null, embeds: [embed], components });
           }
 
           const embed = new EmbedBuilder()

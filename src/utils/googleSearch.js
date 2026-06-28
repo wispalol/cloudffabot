@@ -133,16 +133,8 @@ async function searchGoogle(query, num = 3) {
       });
     }
 
-    // If nothing found in DDG API, include an entry pointing to the search page
-    if (items.length === 0) {
-      const ddgSearchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
-      items.push({ 
-        title: `Search for "${query}"`, 
-        snippet: `I couldn't find a quick answer, but I found some helpful links for you:`, 
-        link: ddgSearchUrl 
-      });
-    }
-
+    // If nothing found in any provider, return empty items array
+    // The consumer (autoResponder/search command) will handle showing the fallback message
     return { items: items.slice(0, num), searchInformation: { source: 'duckduckgo', totalResults: items.length } };
   } catch (error) {
     logger.error('Fallback search failed:', error);
