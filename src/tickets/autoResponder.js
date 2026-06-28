@@ -356,10 +356,10 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           });
           ANSWERS.set(ticketId, acAnswers);
 
-          // If the anticheat check_name matches a known hack type, skip straight to verdict
-          const knownHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'timer', 'blink', 'phase', 'disabler'];
-          const isKnownHack = knownHacks.some(h => hackLabel.toLowerCase().includes(h));
-          if (isKnownHack) {
+          // Hard hacks → immediate verdict, soft hacks → continue with questions
+          const hardHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'blink', 'phase', 'disabler'];
+          const isHardHack = hardHacks.some(h => hackLabel.toLowerCase().includes(h));
+          if (isHardHack) {
             await channel.send({
               embeds: [createEmbed({
                 title: '⚖️ Ban Confirmed by Anticheat Records',
@@ -378,9 +378,6 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             })],
           });
         }
-
-        await new Promise((r) => setTimeout(r, 1500));
-        return finishAutoResponse(channel, member, type, ticketId, userId);
       }
 
       const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
