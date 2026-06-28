@@ -1,4 +1,4 @@
-const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+const { ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const config = require('../config/client');
 const { createEmbed } = require('../utils/embeds');
 const logger = require('../config/logger');
@@ -6,6 +6,8 @@ const i18n = require('../i18n');
 const { lookupAnticheatBan } = require('../database/anticheatDb');
 const { getDb } = require('../database/database');
 const { generateTranscript } = require('../utils/transcript');
+const { searchGoogle } = require('../utils/googleSearch');
+const { summarizeFromItems } = require('../utils/summarizer');
 const path = require('path');
 const fs = require('fs');
 
@@ -573,6 +575,58 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
   });
 
   const analysis = await sendAutoHelp(channel, member, type, answers, ticketId, userId);
+
+  // --- Auto-Search Integration ---
+  // If it's a general support or purchase support ticket, try to find an automated answer
+  if (type === 'general_support' || type === 'purchase_support' || type === 'other') {
+    const mainQuestion = answers.find(a => 
+      a.question.toLowerCase().includes('help') || 
+      a.question.toLowerCase().includes('request') ||
+      a.question.toLowerCase().includes('issue') ||
+      a.question.toLowerCase().includes('purchase')
+    );
+
+    if (mainQuestion && mainQuestion.answer && mainQuestion.answer.length > 5) {
+      const query = mainQuestion.answer.trim();
+      try {
+        const { items } = await searchGoogle(query, 3);
+        if (items && items.length > 0) {
+          const searchEmbed = new EmbedBuilder()
+            .setTitle(`🔍 Automatic Search: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
+            .setColor(config.embed.color.primary)
+            .setFooter({ text: 'I found some resources that might help you immediately.' });
+
+          const summary = summarizeFromItems(items, 500);
+          if (summary) searchEmbed.setDescription(summary);
+
+          for (let i = 0; i < Math.min(items.length, 3); i++) {
+            const it = items[i];
+            const title = it.title || 'No title';
+            const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+            const link = it.link || it.formattedUrl || '';
+            const name = `${i + 1}. ${title}`.slice(0, 250);
+            let value = snippet;
+            if (link) value += `\n\n${link}`;
+            value = value.slice(0, 1020);
+            searchEmbed.addFields({ name, value });
+          }
+
+          const buttons = [];
+          for (let i = 0; i < Math.min(items.length, 3, 5); i++) {
+            const it = items[i];
+            const label = (it.title || it.formattedUrl || `Result ${i + 1}`).slice(0, 80);
+            const url = it.link || it.formattedUrl || null;
+            if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+          }
+
+          const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+          await channel.send({ embeds: [searchEmbed], components });
+        }
+      } catch (err) {
+        logger.error('Auto-search in ticket failed:', err);
+      }
+    }
+  }
 
   await new Promise((r) => setTimeout(r, 1000));
 

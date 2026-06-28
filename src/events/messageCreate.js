@@ -100,25 +100,45 @@ module.exports = {
       if (content2.length > 300) return;
 
       const isLikelyQuestion = (() => {
-        if (!message.mentions.has(message.client.user)) return false;
-        if (content2.includes('?')) return true;
+        const cleanContent = content2.replace(/<@!?\d+>/g, '').trim();
+        if (cleanContent.includes('?') && cleanContent.length > 8) return true;
         // Starts with common question words
-        return /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i.test(content2.replace(/<@!?\d+>/g, '').trim());
+        const questionWords = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i;
+        return questionWords.test(cleanContent) && cleanContent.split(' ').length >= 3;
       })();
 
       if (isLikelyQuestion) {
+        // Auto-answer logic:
+        // 1. If mentioned -> always search.
+        // 2. If NOT mentioned -> only search in ticket channels (channels starting with 'ticket-', 'bug-', 'appeal-', etc.)
+        const isMentioned = message.mentions.has(message.client.user);
+        const isTicketChannel = message.channel.name && (
+          message.channel.name.startsWith('ticket-') || 
+          message.channel.name.startsWith('bug-') || 
+          message.channel.name.startsWith('appeal-') ||
+          message.channel.name.startsWith('report-') ||
+          message.channel.name.startsWith('support-')
+        );
+
+        if (!isMentioned && !isTicketChannel) {
+           return; 
+        }
         const now = Date.now();
         const last = searchCooldown.get(message.author.id) || 0;
         if (now - last < SEARCH_COOLDOWN_MS) return; // respect cooldown
         searchCooldown.set(message.author.id, now);
 
         const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
-        if (!query) return;
+        if (!query || query.length < 5) return;
 
         const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
         try {
           const { items } = await searchGoogle(query, 3);
           if (!items || items.length === 0) {
+            // If we're in a ticket channel and didn't find anything, just delete the "searching" message to keep it clean
+            if (isTicketChannel && !isMentioned) {
+              return replyMsg.delete().catch(() => {});
+            }
             return replyMsg.edit(`I couldn't find anything for **${query}**.`);
           }
 
@@ -154,7 +174,13 @@ module.exports = {
           await replyMsg.edit({ content: null, embeds: [embed], components });
         } catch (err) {
           logger.error('Auto-search failed:', err);
-          try { await replyMsg.edit({ content: 'Sorry — I failed to look that up. Try again later.' }); } catch {}
+          try { 
+            if (isTicketChannel && !isMentioned) {
+              await replyMsg.delete().catch(() => {});
+            } else {
+              await replyMsg.edit({ content: 'Sorry — I failed to look that up. Try again later.' });
+            }
+          } catch {}
         }
       }
     } catch (err) {
