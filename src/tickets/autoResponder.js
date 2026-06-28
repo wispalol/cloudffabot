@@ -372,6 +372,9 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             })],
           });
         }
+
+        await new Promise((r) => setTimeout(r, 1500));
+        return finishAutoResponse(channel, member, type, ticketId, userId);
       }
 
       const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
