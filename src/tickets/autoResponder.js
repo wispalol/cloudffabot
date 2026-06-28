@@ -330,13 +330,14 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           const bannedAt = acBan.banned_at ? new Date(acBan.banned_at).toLocaleString() : 'Unknown';
           const expires = acBan.expires_at ? new Date(acBan.expires_at).toLocaleString() : 'Permanent';
           const status = acBan.unbanned ? 'Unbanned' : 'Active';
+          const hackLabel = acBan.check_name || '';
           await channel.send({
             embeds: [createEmbed({
               title: i18n.t('auto.ban.anticheat_found_title', userId),
               description: i18n.t('auto.ban.anticheat_found_desc', userId, {
                 playerName: acBan.player_name || 'Unknown',
                 uuid: acBan.player_uuid || 'N/A',
-                hackType: acBan.check_name || 'Unknown',
+                hackType: hackLabel,
                 bannedAt,
                 expires,
                 status,
@@ -344,6 +345,24 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               color: config.embed.color.warning,
             })],
           });
+
+          // If the anticheat check_name matches a known hack type, skip straight to verdict
+          const knownHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'timer', 'blink', 'phase', 'disabler'];
+          const isKnownHack = knownHacks.some(h => hackLabel.toLowerCase().includes(h));
+          if (isKnownHack) {
+            await channel.send({
+              embeds: [createEmbed({
+                title: '⚖️ Ban Confirmed by Anticheat Records',
+                description: `Our anticheat database confirms you were detected using **${hackLabel}**. This is a clear violation of our rules. Your responses have been evaluated accordingly.`,
+                color: 0xED4245,
+              })],
+            });
+            const acAnswers = ANSWERS.get(ticketId) || [];
+            acAnswers.push({ question: '_anticheat_record', answer: `Anticheat detection: ${hackLabel} (player: ${acBan.player_name || 'Unknown'})` });
+            ANSWERS.set(ticketId, acAnswers);
+            await new Promise((r) => setTimeout(r, 1500));
+            return finishAutoResponse(channel, member, type, ticketId, userId);
+          }
         } else if (process.env.ANTICHEAT_DB_HOST) {
           await channel.send({
             embeds: [createEmbed({
@@ -600,6 +619,14 @@ function analyzeBanAppeal(answers) {
 
   const strongDenial = /(didn't|did not|would never|wasn't me|false|wrongful|unfair|innocent|mistake).*(ban|punish|action)/i.test(allText) && !admitsFault && !admitsCheating;
 
+  // If anticheat confirmed a hack, verdict is automatic
+  const anticheatEntry = answers.find(a => a.question === '_anticheat_record');
+  if (anticheatEntry) {
+    const match = anticheatEntry.answer.match(/Anticheat detection: (.+?) \(player: (.+?)\)/);
+    const hackLabel = match ? match[1] : anticheatEntry.answer;
+    return { verdict: 'anticheat_confirmed', hackLabel };
+  }
+
   let verdict;
   if (admitsCheating) {
     verdict = 'fair';
@@ -636,15 +663,17 @@ async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
       const analysisTitleKey = `auto.ban_analysis.${analysis.verdict}_title`;
       const analysisDescKey = `auto.ban_analysis.${analysis.verdict}_desc`;
 
+      const verdictColors = { fair: 0x57F287, unfair: 0xED4245, mixed: 0xFEE75C, anticheat_confirmed: 0xED4245 };
+
       await channel.send({
         embeds: [createEmbed({
           title: i18n.t('auto.ban_analysis.analysis_title', userId),
           description: i18n.t('auto.ban_analysis.analysis_desc', userId),
-          color: analysis.verdict === 'fair' ? 0x57F287 : analysis.verdict === 'unfair' ? 0xED4245 : 0xFEE75C,
+          color: verdictColors[analysis.verdict] || 0xFEE75C,
           fields: [
             {
               name: i18n.t(analysisTitleKey, userId),
-              value: i18n.t(analysisDescKey, userId),
+              value: i18n.t(analysisDescKey, userId, analysis.verdict === 'anticheat_confirmed' ? { hackLabel: analysis.hackLabel } : {}),
             },
           ],
         })],

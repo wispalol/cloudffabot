@@ -189,6 +189,8 @@ module.exports = {
     ban_analysis: {
       analysis_title: '⚖️ Odwołanie od Bana — Ocena Automatyczna',
       analysis_desc: 'Przeanalizowałem wszystkie Twoje odpowiedzi zgodnie z naszymi wytycznymi. Poniżej moja oficjalna ocena:',
+      anticheat_confirmed_title: '❌ Ban Potwierdzony — Dowód z Antycheata',
+      anticheat_confirmed_desc: 'Nasza baza danych antycheata **jednoznacznie wykryła** użycie zabronionych modyfikacji na Twoim koncie. To nie jest kwestia opinii — dowód jest zarejestrowany w naszych systemach.\n\n**Co to oznacza:**\n• Antycheat wykrył {hackLabel} na Twoim koncie\n• To wykrycie jest zautomatyzowane i zweryfikowane\n• Żadne zaprzeczenie nie może unieważnić dowodu systemowego\n\n**To odwołanie jest automatycznie odrzucone.** Twoja sprawa została zamknięta. Próby składania wielokrotnych fałszywych odwołań mogą skutkować rozszerzonymi sankcjami.',
       fair_title: '❌ Odwołanie Odrzucone — Ban Podtrzymany',
       fair_desc: 'Po dokładnej analizie Twoich odpowiedzi stwierdziłem, że ten ban był **uzasadniony i zostanie podtrzymany**.\n\nPrzyznałeś się do używania zabronionych modyfikacji lub łamania zasad, a nasze rekordy potwierdzają, że podjęte działania dyscyplinarne były odpowiednie.\n\n**To odwołanie nie zostanie przekazane dalej.** Twoja sprawa została zarejestrowana i zamknięta. Jeśli uważasz, że wystąpił błąd proceduralny, możesz użyć przycisku poniżej, aby poprosić o przegląd personelu — jednak szanse na odwrócenie tej decyzji są niezwykle niskie.',
       mixed_title: '⚖️ Odwołanie Wymaga Przeglądu Personelu',

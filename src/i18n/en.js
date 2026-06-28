@@ -189,6 +189,8 @@ module.exports = {
     ban_analysis: {
       analysis_title: '⚖️ Ban Appeal — Automated Assessment',
       analysis_desc: 'I have reviewed all of your responses against our guidelines. Below is my official assessment:',
+      anticheat_confirmed_title: '❌ Ban Confirmed — Anticheat Evidence',
+      anticheat_confirmed_desc: 'Our anticheat database has **conclusively detected** the use of prohibited modifications on your account. This is not a matter of opinion — the evidence is recorded in our systems.\n\n**What this means:**\n• The anticheat flagged {hackLabel} on your account\n• This detection is automated and verified\n• No amount of denial can override system evidence\n\n**This appeal is automatically denied.** Your case has been closed. Attempting to file repeated false appeals may result in extended sanctions.',
       fair_title: '❌ Appeal Denied — Ban Uphold',
       fair_desc: 'After thoroughly analysing your responses, I have determined that this ban was **justified and will be uphold**.\n\nYou acknowledged the use of prohibited modifications or rule-breaking behaviour, and our records confirm the enforcement action was appropriate.\n\n**This appeal will not be escalated further.** Your case has been logged and closed. If you believe there has been a procedural error, you may use the button below to request a staff review — however, be advised that the odds of overturning this decision are extremely low.',
       mixed_title: '⚖️ Appeal Requires Staff Review',

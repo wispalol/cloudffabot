@@ -189,6 +189,8 @@ module.exports = {
     ban_analysis: {
       analysis_title: '⚖️ Apelación de Baneo — Evaluación Automática',
       analysis_desc: 'He revisado todas tus respuestas según nuestras directrices. A continuación, mi evaluación oficial:',
+      anticheat_confirmed_title: '❌ Baneo Confirmado — Evidencia del Anticheat',
+      anticheat_confirmed_desc: 'Nuestra base de datos del anticheat ha **detectado de manera concluyente** el uso de modificaciones prohibidas en tu cuenta. Esto no es cuestión de opinión — la evidencia está registrada en nuestros sistemas.\n\n**Qué significa esto:**\n• El anticheat detectó {hackLabel} en tu cuenta\n• Esta detección es automatizada y verificada\n• Ninguna negación puede anular la evidencia del sistema\n\n**Esta apelación es automáticamente denegada.** Tu caso ha sido cerrado. Intentar presentar apelaciones falsas repetidas puede resultar en sanciones extendidas.',
       fair_title: '❌ Apelación Denegada — Baneo Confirmado',
       fair_desc: 'Después de analizar a fondo tus respuestas, he determinado que este baneo fue **justificado y será mantenido**.\n\nReconociste el uso de modificaciones prohibidas o comportamiento infractor, y nuestros registros confirman que la acción disciplinaria fue apropiada.\n\n**Esta apelación no será escalada más.** Tu caso ha sido registrado y cerrado. Si crees que hubo un error de procedimiento, puedes usar el botón de abajo para solicitar una revisión del personal — sin embargo, ten en cuenta que las posibilidades de revertir esta decisión son extremadamente bajas.',
       mixed_title: '⚖️ Apelación Requiere Revisión del Personal',
