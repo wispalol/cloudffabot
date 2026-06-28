@@ -1,9 +1,7 @@
 const {
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
   ChannelType,
   PermissionFlagsBits,
 } = require('discord.js');
@@ -39,24 +37,21 @@ async function sendTicketPanel(channel) {
     footerText: i18n.t('ticket.panel.footer'),
   });
 
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId('ticket_create')
-    .setPlaceholder(i18n.t('ticket.panel.select_placeholder'))
-    .addOptions(
-      TICKET_TYPES.map((t) => ({
-        label: t.label,
-        value: t.value,
-        emoji: t.emoji,
-      }))
-    );
+  const buttons = TICKET_TYPES.map((t) =>
+    new ButtonBuilder()
+      .setCustomId(`ticket_create_${t.value}`)
+      .setLabel(t.label)
+      .setEmoji(t.emoji)
+      .setStyle(ButtonStyle.Primary)
+  );
 
-  const row = new ActionRowBuilder().addComponents(selectMenu);
+  const row = new ActionRowBuilder().addComponents(buttons);
 
   await channel.send({ embeds: [embed], components: [row] });
 }
 
 async function handleTicketCreate(interaction) {
-  const type = interaction.values[0];
+  const type = interaction.customId.replace('ticket_create_', '');
   const guild = interaction.guild;
   const member = interaction.member;
   const categoryId = config.ticket.categoryId;

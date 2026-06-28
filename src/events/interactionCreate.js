@@ -48,12 +48,6 @@ module.exports = {
         return;
       }
 
-      // ─── Ticket Select Menu ────────────────────────────
-      if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_create') {
-        await handleTicketCreate(interaction);
-        return;
-      }
-
       // ─── Language Select Menu ──────────────────────────
       if (interaction.isStringSelectMenu() && interaction.customId === 'language_select') {
         const locale = interaction.values[0];
@@ -73,6 +67,12 @@ module.exports = {
             components: [],
           });
         }
+        return;
+      }
+
+      // ─── Ticket Create Buttons ─────────────────────────
+      if (interaction.isButton() && interaction.customId.startsWith('ticket_create_')) {
+        await handleTicketCreate(interaction);
         return;
       }
 
