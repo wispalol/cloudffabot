@@ -222,6 +222,58 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     const answer = collected.first();
     const answerText = answer.content;
 
+    // --- Search Integration ---
+    // If user's answer looks like a question, try to search for it immediately
+    const isLikelyQuestion = (() => {
+      const cleanContent = answerText.trim();
+      if (cleanContent.includes('?') && cleanContent.length > 8) return true;
+      const questionWords = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i;
+      return questionWords.test(cleanContent) && cleanContent.split(' ').length >= 3;
+    })();
+
+    if (isLikelyQuestion && answerText.length < 300) {
+      const query = answerText.replace(/\?+$/, '').trim();
+      if (query.length >= 5) {
+        try {
+          const { items } = await searchGoogle(query, 3);
+          if (items && items.length > 0) {
+            const searchEmbed = new EmbedBuilder()
+              .setTitle(`🔍 I found some info for: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
+              .setColor(config.embed.color.primary)
+              .setFooter({ text: 'I hope this helps while you wait for staff!' });
+
+            const summary = summarizeFromItems(items, 500);
+            if (summary) searchEmbed.setDescription(summary);
+
+            for (let i = 0; i < Math.min(items.length, 3); i++) {
+              const it = items[i];
+              const title = it.title || 'No title';
+              const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+              const link = it.link || it.formattedUrl || '';
+              const name = `${i + 1}. ${title}`.slice(0, 250);
+              let value = snippet;
+              if (link) value += `\n\n${link}`;
+              value = value.slice(0, 1020);
+              searchEmbed.addFields({ name, value });
+            }
+
+            const buttons = [];
+            for (let i = 0; i < Math.min(items.length, 3, 5); i++) {
+              const it = items[i];
+              const label = (it.title || it.formattedUrl || `Result ${i + 1}`).slice(0, 80);
+              const url = it.link || it.formattedUrl || null;
+              if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+            }
+
+            const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+            await channel.send({ embeds: [searchEmbed], components });
+          }
+        } catch (err) {
+          logger.error('Search during ticket collection failed:', err);
+        }
+      }
+    }
+
     // Check if user is asking for human staff
     if (HUMAN_KEYWORDS.some((kw) => answerText.toLowerCase().includes(kw))) {
       await channel.send({
