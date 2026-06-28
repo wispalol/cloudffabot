@@ -222,18 +222,49 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     const answer = collected.first();
     const answerText = answer.content;
 
+    // Check if user is asking for human staff
+    if (HUMAN_KEYWORDS.some((kw) => answerText.toLowerCase().includes(kw))) {
+      await channel.send({
+        embeds: [createEmbed({
+          title: '🙋 Transferring to Staff',
+          description: 'I understand you\'d like to speak with a real person. I\'ll notify our staff team right away.\n\nYour answers so far have been saved and will be shared with them.',
+          color: config.embed.color.warning,
+        })],
+      });
+
+      const staffRoleId = config.ticket.staffRoleId;
+      if (staffRoleId) {
+        await channel.send({
+          content: `<@&${staffRoleId}> — ${member} is requesting to speak with a human staff member.`,
+        });
+      }
+
+      const answers = ANSWERS.get(ticketId) || [];
+      answers.push({ question, answer: answerText });
+      ANSWERS.set(ticketId, answers);
+      return;
+    }
+
+    const answers = ANSWERS.get(ticketId) || [];
+    answers.push({ question, answer: answerText });
+    ANSWERS.set(ticketId, answers);
+
+    // Enhanced contextual response based on their answer
+    const response = await generateProfessionalResponse(answerText, type, question, index, answers, questions.length, userId);
+    await channel.send({ embeds: [response] });
+
     // --- Search Integration ---
     // If user's answer looks like a question, try to search for it immediately
     const isLikelyQuestion = (() => {
       const cleanContent = answerText.trim().toLowerCase();
       // If it ends with a question mark and isn't too short, it's a question
-      if (cleanContent.includes('?') && cleanContent.length > 5) return true;
+      if (cleanContent.endsWith('?') && cleanContent.length > 5) return true;
       
       // Check for question starters or "how to"
       const questionStarters = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will|how to|how do i|can i|where is)\b/i;
       if (questionStarters.test(cleanContent)) {
         // Ensure it's long enough to be a real question, not just "how?"
-        return cleanContent.split(' ').length >= 2;
+        return cleanContent.split(' ').length >= 3;
       }
       return false;
     })();
@@ -241,8 +272,8 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     if (isLikelyQuestion && answerText.length < 300) {
       const query = answerText.replace(/\?+$/, '').trim();
       if (query.length >= 5) {
-        // Send a temporary "thinking" message like messageCreate does, or just do it silently
-        // For ticket collection, it might be better to show we're looking it up
+        // Wait a moment for the professional response to be seen
+        await new Promise((r) => setTimeout(r, 1000));
         const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
         
         try {
@@ -287,49 +318,6 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           await searchStatusMsg.delete().catch(() => {});
         }
       }
-    }
-
-    // Check if user is asking for human staff
-    if (HUMAN_KEYWORDS.some((kw) => answerText.toLowerCase().includes(kw))) {
-      await channel.send({
-        embeds: [createEmbed({
-          title: '🙋 Transferring to Staff',
-          description: 'I understand you\'d like to speak with a real person. I\'ll notify our staff team right away.\n\nYour answers so far have been saved and will be shared with them.',
-          color: config.embed.color.warning,
-        })],
-      });
-
-      const staffRoleId = config.ticket.staffRoleId;
-      if (staffRoleId) {
-        await channel.send({
-          content: `<@&${staffRoleId}> — ${member} is requesting to speak with a human staff member.`,
-        });
-      }
-
-      const answers = ANSWERS.get(ticketId) || [];
-      answers.push({ question, answer: answerText });
-      ANSWERS.set(ticketId, answers);
-      return;
-    }
-
-    const answers = ANSWERS.get(ticketId) || [];
-    answers.push({ question, answer: answerText });
-    ANSWERS.set(ticketId, answers);
-
-    // Enhanced contextual response based on their answer
-    const response = await generateProfessionalResponse(answerText, type, question, index, answers, questions.length, userId);
-    await channel.send({ embeds: [response] });
-
-    // Send a follow-up encouragement message for longer conversations
-    if (index > 1 && answerText.length > 50 && index % 2 === 1) {
-      await new Promise((r) => setTimeout(r, 800));
-      await channel.send({
-        embeds: [createEmbed({
-          title: '💬 Thank you for the details',
-          description: i18n.t('auto.response.followup_positive', userId),
-          color: config.embed.color.primary,
-        })],
-      });
     }
 
     // Check for evidence mentions
@@ -473,7 +461,11 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     // Brief pause then next question
     await new Promise((r) => setTimeout(r, 1000));
     await askNextQuestion(channel, member, type, ticketId, questions, index + 1, userId);
-  } catch {
+    return;
+  } catch (err) {
+    if (err.name !== 'Error' || err.message !== 'time') {
+      logger.error('Error in askNextQuestion loop:', err);
+    }
     await closeAndDeleteTicket(channel, ticketId, userId);
   }
 }
