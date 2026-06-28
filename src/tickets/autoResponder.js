@@ -319,11 +319,17 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             // before the next question scrolls it away
             await new Promise((r) => setTimeout(r, 5000));
           } else {
-            // No direct results found, just remove the searching message
-            await searchStatusMsg.delete().catch(() => {});
+            // No direct results found, but let the user know we tried
+            searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on Google. A staff member will be with you shortly to assist!`);
+            await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
+            
+            // Wait a few seconds before moving on
+            await new Promise((r) => setTimeout(r, 4000));
           }
         } catch (err) {
           logger.error('Search during ticket collection failed:', err);
+          await searchStatusMsg.edit({ content: '⚠️ An error occurred while searching. Moving on with your ticket...' }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 2000));
           await searchStatusMsg.delete().catch(() => {});
         }
       }
