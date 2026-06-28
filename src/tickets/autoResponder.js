@@ -359,7 +359,18 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               })],
             });
             const acAnswers = ANSWERS.get(ticketId) || [];
-            acAnswers.push({ question: '_anticheat_record', answer: `Anticheat detection: ${hackLabel} (player: ${acBan.player_name || 'Unknown'})` });
+            acAnswers.push({
+              question: '_anticheat_record',
+              answer: JSON.stringify({
+                hackLabel: hackLabel,
+                playerName: acBan.player_name || 'Unknown',
+                playerUuid: acBan.player_uuid || '',
+                bannedAt: acBan.banned_at || '',
+                expiresAt: acBan.expires_at || '',
+                unbanned: acBan.unbanned ? true : false,
+                banId: acBan.ban_id || '',
+              }),
+            });
             ANSWERS.set(ticketId, acAnswers);
             await new Promise((r) => setTimeout(r, 1500));
             return finishAutoResponse(channel, member, type, ticketId, userId);
@@ -626,9 +637,13 @@ function analyzeBanAppeal(answers) {
   // If anticheat confirmed a hack, verdict is automatic
   const anticheatEntry = answers.find(a => a.question === '_anticheat_record');
   if (anticheatEntry) {
-    const match = anticheatEntry.answer.match(/Anticheat detection: (.+?) \(player: (.+?)\)/);
-    const hackLabel = match ? match[1] : anticheatEntry.answer;
-    return { verdict: 'anticheat_confirmed', hackLabel };
+    let acData;
+    try {
+      acData = JSON.parse(anticheatEntry.answer);
+    } catch {
+      acData = { hackLabel: anticheatEntry.answer, playerName: 'Unknown' };
+    }
+    return { verdict: 'anticheat_confirmed', ...acData };
   }
 
   let verdict;
@@ -669,17 +684,33 @@ async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
 
       const verdictColors = { fair: 0x57F287, unfair: 0xED4245, mixed: 0xFEE75C, anticheat_confirmed: 0xED4245 };
 
+      const isAcConfirmed = analysis.verdict === 'anticheat_confirmed';
+      const verdictFields = [
+        {
+          name: i18n.t(analysisTitleKey, userId),
+          value: i18n.t(analysisDescKey, userId, isAcConfirmed ? { hackLabel: analysis.hackLabel } : {}),
+        },
+      ];
+
+      if (isAcConfirmed) {
+        const bannedAt = analysis.bannedAt ? new Date(analysis.bannedAt).toLocaleString() : 'Unknown';
+        const expires = analysis.expiresAt ? new Date(analysis.expiresAt).toLocaleString() : 'Permanent';
+        verdictFields.push(
+          { name: '👤 Player', value: `\`${analysis.playerName}\``, inline: true },
+          { name: '🔍 Detected Hack', value: `\`${analysis.hackLabel}\``, inline: true },
+          { name: '🆔 Ban ID', value: `\`${analysis.banId}\``, inline: true },
+          { name: '📅 Banned At', value: bannedAt, inline: true },
+          { name: '⏳ Expires', value: expires, inline: true },
+          { name: '✅ Status', value: analysis.unbanned ? 'Unbanned' : 'Active', inline: true },
+        );
+      }
+
       await channel.send({
         embeds: [createEmbed({
           title: i18n.t('auto.ban_analysis.analysis_title', userId),
           description: i18n.t('auto.ban_analysis.analysis_desc', userId),
           color: verdictColors[analysis.verdict] || 0xFEE75C,
-          fields: [
-            {
-              name: i18n.t(analysisTitleKey, userId),
-              value: i18n.t(analysisDescKey, userId, analysis.verdict === 'anticheat_confirmed' ? { hackLabel: analysis.hackLabel } : {}),
-            },
-          ],
+          fields: verdictFields,
         })],
       });
 
