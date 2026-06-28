@@ -100,11 +100,11 @@ module.exports = {
       if (content2.length > 300) return;
 
       const isLikelyQuestion = (() => {
-        const cleanContent = content2.replace(/<@!?\d+>/g, '').trim();
-        if (cleanContent.includes('?') && cleanContent.length > 8) return true;
-        // Starts with common question words
-        const questionWords = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i;
-        return questionWords.test(cleanContent) && cleanContent.split(' ').length >= 3;
+        const cleanContent = content2.replace(/<@!?\d+>/g, '').trim().toLowerCase();
+        if (cleanContent.includes('?') && cleanContent.length > 5) return true;
+        // Starts with common question words or "how to"
+        const questionStarters = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will|how to|how do i|can i|where is)\b/i;
+        return questionStarters.test(cleanContent) && cleanContent.split(' ').length >= 2;
       })();
 
       if (isLikelyQuestion) {

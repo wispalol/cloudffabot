@@ -225,15 +225,26 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     // --- Search Integration ---
     // If user's answer looks like a question, try to search for it immediately
     const isLikelyQuestion = (() => {
-      const cleanContent = answerText.trim();
-      if (cleanContent.includes('?') && cleanContent.length > 8) return true;
-      const questionWords = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i;
-      return questionWords.test(cleanContent) && cleanContent.split(' ').length >= 3;
+      const cleanContent = answerText.trim().toLowerCase();
+      // If it ends with a question mark and isn't too short, it's a question
+      if (cleanContent.includes('?') && cleanContent.length > 5) return true;
+      
+      // Check for question starters or "how to"
+      const questionStarters = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will|how to|how do i|can i|where is)\b/i;
+      if (questionStarters.test(cleanContent)) {
+        // Ensure it's long enough to be a real question, not just "how?"
+        return cleanContent.split(' ').length >= 2;
+      }
+      return false;
     })();
 
     if (isLikelyQuestion && answerText.length < 300) {
       const query = answerText.replace(/\?+$/, '').trim();
       if (query.length >= 5) {
+        // Send a temporary "thinking" message like messageCreate does, or just do it silently
+        // For ticket collection, it might be better to show we're looking it up
+        const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
+        
         try {
           const { items } = await searchGoogle(query, 3);
           if (items && items.length > 0) {
@@ -266,10 +277,14 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             }
 
             const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
-            await channel.send({ embeds: [searchEmbed], components });
+            await searchStatusMsg.edit({ content: null, embeds: [searchEmbed], components });
+          } else {
+            // No results, just remove the searching message
+            await searchStatusMsg.delete().catch(() => {});
           }
         } catch (err) {
           logger.error('Search during ticket collection failed:', err);
+          await searchStatusMsg.delete().catch(() => {});
         }
       }
     }
@@ -635,7 +650,8 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
       a.question.toLowerCase().includes('help') || 
       a.question.toLowerCase().includes('request') ||
       a.question.toLowerCase().includes('issue') ||
-      a.question.toLowerCase().includes('purchase')
+      a.question.toLowerCase().includes('purchase') ||
+      a.question.toLowerCase().includes('today')
     );
 
     if (mainQuestion && mainQuestion.answer && mainQuestion.answer.length > 5) {
