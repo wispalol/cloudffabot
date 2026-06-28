@@ -138,7 +138,7 @@ async function searchGoogle(query, num = 3) {
       const ddgSearchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
       items.push({ 
         title: `Search for "${query}"`, 
-        snippet: `No instant answer found. Click below to see full results on the web.`, 
+        snippet: `I couldn't find a quick answer, but I found some helpful links for you:`, 
         link: ddgSearchUrl 
       });
     }
