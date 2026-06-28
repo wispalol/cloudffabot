@@ -287,7 +287,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       const playerName = extractPlayerName(answerText);
       const banStringId = extractBanStringId(answerText);
       const antiCheatId = extractNumericId(answerText);
-      const identifier = playerName || banStringId || antiCheatId || banId;
+      const identifier = banStringId || playerName || antiCheatId || banId;
 
       if (identifier) {
         await channel.send({
