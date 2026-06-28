@@ -264,6 +264,16 @@ module.exports = {
       'Skąd dowiedziałeś się o naszym serwerze?',
       'Co zrobisz inaczej, jeśli dostaniesz drugą szansę?',
     ],
+    ban_appeal_with_record: [
+      'Jaka jest twoja nazwa użytkownika w Minecraft (IGN)?',
+      'Czy przyznajesz się do używania **{hack}** na naszym serwerze?',
+      'Dlaczego to robiłeś?',
+      'Czy rozumiesz, że używanie nieuczciwych przewag jest przeciwko zasadom?',
+      'Jak długo jesteś na serwerze?',
+      'Czy zgadzasz się przestrzegać zasad od teraz?',
+      'Czy jest coś jeszcze, co chciałbyś dodać?',
+      'Co zrobisz inaczej, jeśli dostaniesz drugą szansę?',
+    ],
     bug_report: [
       'Jaki błąd napotkałeś? Opisz go szczegółowo.',
       'Jakie kroki możemy podjąć, aby odtworzyć błąd?',

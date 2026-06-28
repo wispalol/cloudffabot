@@ -370,6 +370,12 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             await new Promise((r) => setTimeout(r, 1000));
             return finishAutoResponse(channel, member, type, ticketId, userId);
           }
+
+          // Soft hack: use modified questions (skip "Why were you banned?" etc.)
+          const acQuestions = i18n.getQuestions('ban_appeal_with_record', userId);
+          if (acQuestions.length > 0) {
+            questions = acQuestions.map(q => q.replace(/\{hack\}/g, hackLabel));
+          }
         } else if (process.env.ANTICHEAT_DB_HOST) {
           await channel.send({
             embeds: [createEmbed({
