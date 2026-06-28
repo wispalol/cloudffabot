@@ -27,8 +27,9 @@ async function searchGoogle(query, num = 3) {
       if (res.ok) {
         const data = await res.json();
         // Normalize common shapes: items | results | data.results
-        const items = data.items || data.results || data.data?.results || [];
+        const dataItems = data.items || data.results || data.data?.results || [];
         // Ensure items have title/snippet/link properties if possible
+        const items = Array.isArray(dataItems) ? dataItems : [];
         const normalized = items.map((it) => {
           if (!it) return null;
           return {
@@ -50,24 +51,26 @@ async function searchGoogle(query, num = 3) {
 
   // Prefer Google Custom Search when configured
   if (apiKey && cx) {
-    const url = new URL('https://www.googleapis.com/customsearch/v1');
-    url.searchParams.set('key', apiKey);
-    url.searchParams.set('cx', cx);
-    url.searchParams.set('q', query);
-    url.searchParams.set('num', String(Math.min(Math.max(num, 1), 10)));
+    try {
+      const url = new URL('https://www.googleapis.com/customsearch/v1');
+      url.searchParams.set('key', apiKey);
+      url.searchParams.set('cx', cx);
+      url.searchParams.set('q', query);
+      url.searchParams.set('num', String(Math.min(Math.max(num, 1), 10)));
 
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      const text = await res.text();
-      logger.error('Google Search API error', { status: res.status, body: text });
-      const err = new Error(`Google API ${res.status}`);
-      err.status = res.status;
-      err.body = text;
-      throw err;
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        const text = await res.text();
+        logger.error('Google Search API error', { status: res.status, body: text });
+        // Instead of throwing, we might want to fall back to DDG
+        // throw err;
+      } else {
+        const data = await res.json();
+        return { items: data.items || [], searchInformation: data.searchInformation || {} };
+      }
+    } catch (err) {
+      logger.error('Google Search request failed:', err);
     }
-
-    const data = await res.json();
-    return { items: data.items || [], searchInformation: data.searchInformation || {} };
   }
 
   // Fallback: DuckDuckGo Instant Answer API (no key required)
@@ -102,6 +105,14 @@ async function searchGoogle(query, num = 3) {
 
     if (Array.isArray(json.Results) && json.Results.length) {
       json.Results.forEach((r) => pushTopic(r));
+    }
+
+    if (json.Answer && typeof json.Answer === 'string') {
+      items.push({
+        title: 'Instant Answer',
+        snippet: json.Answer,
+        link: json.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
+      });
     }
 
     if (Array.isArray(json.RelatedTopics) && json.RelatedTopics.length) {

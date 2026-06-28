@@ -100,9 +100,10 @@ module.exports = {
       if (content2.length > 300) return;
 
       const isLikelyQuestion = (() => {
+        if (!message.mentions.has(message.client.user)) return false;
         if (content2.includes('?')) return true;
         // Starts with common question words
-        return /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i.test(content2);
+        return /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will)\b/i.test(content2.replace(/<@!?\d+>/g, '').trim());
       })();
 
       if (isLikelyQuestion) {
@@ -111,7 +112,7 @@ module.exports = {
         if (now - last < SEARCH_COOLDOWN_MS) return; // respect cooldown
         searchCooldown.set(message.author.id, now);
 
-        const query = content2.replace(/\?+$/, '').trim();
+        const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
         if (!query) return;
 
         const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });

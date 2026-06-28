@@ -27,9 +27,12 @@ module.exports = {
 
     const apiKey = config.search?.apiKey || process.env.GOOGLE_API_KEY;
     const cx = config.search?.cx || process.env.GOOGLE_CX;
+    const tavilyKey = config.tavily?.apiKey || process.env.TAVILY_API_KEY;
 
-    if (!apiKey || !cx) {
-      return interaction.reply({ content: 'Search is not configured. Set GOOGLE_API_KEY and GOOGLE_CX in your environment.', ephemeral: true });
+    if (!apiKey && !cx && !tavilyKey) {
+      // If no keys at all, we can still fall back to DDG in searchGoogle, 
+      // but let's at least check if some config exists or warn user.
+      // Actually, searchGoogle has DDG as hard fallback, so we can allow it.
     }
 
     await interaction.deferReply();
