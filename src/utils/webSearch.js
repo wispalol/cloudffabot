@@ -1,5 +1,6 @@
 const logger = require('../config/logger');
 const config = require('../config/client');
+const { filterSearchResults } = require('./safetyFilter');
 
 /**
  * Perform a search request using the Tavily search engine.
@@ -41,9 +42,13 @@ async function searchWeb(query, num = 3) {
           link: it.url || it.link || '',
         })).filter(it => it.title && it.link);
 
-        if (normalized.length > 0) {
-          logger.info('Tavily Search results found', { count: normalized.length });
-          return { items: normalized.slice(0, num), searchInformation: { source: 'tavily' } };
+        const filtered = filterSearchResults(normalized);
+        const removed = normalized.length - filtered.length;
+        if (removed > 0) logger.info('Safety filter removed search results', { removed });
+
+        if (filtered.length > 0) {
+          logger.info('Tavily Search results found', { count: filtered.length });
+          return { items: filtered.slice(0, num), searchInformation: { source: 'tavily' } };
         } else {
           logger.warn('Tavily returned items but they were filtered out during normalization', { rawCount: dataItems.length });
         }

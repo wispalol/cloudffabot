@@ -5,7 +5,7 @@ const { searchWeb } = require('../../utils/webSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
 const { aiSummarize } = require('../../utils/aiSummarizer');
 const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../../utils/claudeAI');
-const { isQuerySafe, getBlockedMessage } = require('../../utils/safetyFilter');
+const { isQuerySafe, getBlockedMessage, logSafetyViolation } = require('../../utils/safetyFilter');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -45,6 +45,9 @@ module.exports = {
         .setTitle(blocked.title)
         .setColor(0xED4245)
         .setDescription(blocked.description);
+      if (interaction.guild) {
+        logSafetyViolation(interaction.guild, interaction.user.id, query, 'Query blocked by safety filter', '/search command');
+      }
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 

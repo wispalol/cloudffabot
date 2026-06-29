@@ -5,7 +5,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, askClaude, isConfigured: claudeConfigured } = require('../utils/claudeAI');
-const { isQuerySafe, containsBlockedContent, getBlockedMessage } = require('../utils/safetyFilter');
+const { isQuerySafe, containsBlockedContent, getBlockedMessage, logSafetyViolation } = require('../utils/safetyFilter');
 
 const config = require('../config/client');
 
@@ -58,6 +58,7 @@ module.exports = {
             .setTitle(blocked.title)
             .setColor(0xED4245)
             .setDescription(blocked.description);
+          logSafetyViolation(message.guild, message.author.id, query, 'Query blocked by safety filter', '!g/!search prefix');
           return message.reply({ embeds: [embed] });
         }
 
@@ -194,11 +195,15 @@ module.exports = {
     // ─── Server IP Lookup ───────────────────────────────
     try {
       const content = message.content.trim().toLowerCase();
+      const ipKeywords = ['ip', 'server ip', 'join ip', 'what is the ip', 'server address', 'how do i join', 'how to join', 'connect ip'];
 
       // Skip IP lookup if message contains unsafe content
-      if (containsBlockedContent(content)) return;
-
-      const ipKeywords = ['ip', 'server ip', 'join ip', 'what is the ip', 'server address', 'how do i join', 'how to join', 'connect ip'];
+      if (containsBlockedContent(content)) {
+        if (ipKeywords.some(kw => content.includes(kw))) {
+          logSafetyViolation(message.guild, message.author.id, content, 'Unsafe content blocked in IP lookup', 'IP lookup');
+        }
+        return;
+      }
       const matchesIp = ipKeywords.some(kw => content.includes(kw));
       if (matchesIp && content.length < 200) {
         const now = Date.now();

@@ -11,7 +11,7 @@ const { searchWeb } = require('../utils/webSearch');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../utils/claudeAI');
-const { isQuerySafe, containsBlockedContent } = require('../utils/safetyFilter');
+const { isQuerySafe, containsBlockedContent, logSafetyViolation } = require('../utils/safetyFilter');
 const path = require('path');
 const fs = require('fs');
 
@@ -1407,6 +1407,8 @@ async function handleSafetyViolation(channel, member, ticketId, userId) {
       `INSERT INTO ticket_bans (user_id, guild_id, banned_until, reason) VALUES (?, ?, ?, 'Safety policy violation in ticket')`,
       [userId, channel.guild.id, bannedUntil]
     );
+
+    logSafetyViolation(channel.guild, userId, 'Ticket answer violated safety policy', 'Safety violation in ticket', 'Ticket auto-responder');
 
     await logTicketAction(channel.guild, 'Ticket closed (safety violation)', {
       ticketId,

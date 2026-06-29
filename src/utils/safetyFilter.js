@@ -1,6 +1,10 @@
 // Only allow Minecraft-related or general support (payments, etc.) queries
 // Block everything unsafe for children
 
+const { EmbedBuilder } = require('discord.js');
+const config = require('../config/client');
+const logger = require('../config/logger');
+
 const BLOCKED_KEYWORDS = [
   // Adult / NSFW
   'porn', 'sex', 'nude', 'naked', 'xxx', 'nsfw', 'adult', 'hentai',
@@ -79,6 +83,11 @@ const BLOCKED_KEYWORDS = [
   'bongware',
   'crystal client',
   'opcional',
+
+  // General Cheating / Hacking (not child-safe)
+  'how to hack', 'how to cheat', 'how to use hacks', 'how to use cheats',
+  'hack client', 'cheat client', 'hacked client', 'cheating client',
+  'best hack', 'best cheat', 'best client',
 
   // Gambling
   'online casino', 'betting site', 'sports bet', 'poker real money',
@@ -169,4 +178,35 @@ function getBlockedMessage() {
   };
 }
 
-module.exports = { isQuerySafe, containsBlockedContent, getBlockedMessage };
+function filterSearchResults(results) {
+  if (!results || !Array.isArray(results)) return results;
+  return results.filter(r => {
+    const text = (r.title + ' ' + r.snippet + ' ' + (r.link || r.formattedUrl || '')).toLowerCase();
+    for (const kw of BLOCKED_KEYWORDS) {
+      if (text.includes(kw)) return false;
+    }
+    return true;
+  });
+}
+
+async function logSafetyViolation(guild, userId, query, reason, source) {
+  if (!guild) return;
+  try {
+    const logChannelId = config.moderation?.logChannelId;
+    if (!logChannelId) return;
+    const channel = await guild.channels.fetch(logChannelId).catch(() => null);
+    if (!channel) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle('🚨 Safety Filter Triggered')
+      .setColor(0xED4245)
+      .setDescription(`**User:** <@${userId}> (\`${userId}\`)\n**Query:** \`${query}\`\n**Source:** ${source || 'Unknown'}\n**Reason:** ${reason || 'Blocked content'}`)
+      .setTimestamp();
+
+    await channel.send({ embeds: [embed] });
+  } catch (err) {
+    logger.error('Failed to log safety violation:', err);
+  }
+}
+
+module.exports = { isQuerySafe, containsBlockedContent, getBlockedMessage, filterSearchResults, logSafetyViolation };

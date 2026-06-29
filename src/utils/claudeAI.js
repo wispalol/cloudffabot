@@ -1,6 +1,7 @@
 const config = require('../config/client');
 const logger = require('../config/logger');
 const { searchWeb } = require('./webSearch');
+const { filterSearchResults, logSafetyViolation } = require('./safetyFilter');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -62,7 +63,14 @@ Keep answers concise (3-6 sentences) unless the question requires more detail.
 Be friendly, professional, and direct.
 If you don't know something, say so honestly rather than making up information.
 If search results are provided, use them to inform your answer and cite sources naturally.
-Do not mention "based on the search results" or "according to the provided links" — just give the answer.`;
+Do not mention "based on the search results" or "according to the provided links" — just give the answer.
+
+IMPORTANT SAFETY RULES:
+- If the user asks about cheating, hacking, or using unfair advantages in any game, politely refuse to answer.
+- If the user asks about anything NSFW, violent, hateful, or illegal, politely refuse to answer.
+- If the user asks about Minecraft cheat clients (Meteor, Wurst, LiquidBounce, etc.), politely refuse to answer.
+- If the user asks about anything inappropriate for children, politely refuse to answer.
+- When refusing, say "I'm sorry, but I can't help with that question. Please ask something appropriate for our community."`;
 
   let userMessage;
   if (searchResults && searchResults.length > 0) {
@@ -96,7 +104,7 @@ async function askClaudeWithSearch(query, numResults = 5) {
     try {
       const result = await searchWeb(query, numResults);
       if (result.items && result.items.length > 0) {
-        searchResults = result.items;
+        searchResults = filterSearchResults(result.items);
       }
     } catch (err) {
       logger.warn('Search failed for Claude query, proceeding without search results:', err);
