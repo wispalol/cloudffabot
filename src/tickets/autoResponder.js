@@ -9,6 +9,7 @@ const { generateTranscript } = require('../utils/transcript');
 const { searchWeb } = require('../utils/webSearch');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
+const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../utils/claudeAI');
 const path = require('path');
 const fs = require('fs');
 
@@ -278,6 +279,48 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
         const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
         
         try {
+          // Try Claude first if configured
+          if (claudeConfigured()) {
+            const claudeResult = await askClaudeWithSearch(query, 3);
+            if (claudeResult.answer) {
+              const embed = new EmbedBuilder()
+                .setTitle(`🔍 I found some info for: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
+                .setColor(config.embed.color.primary)
+                .setDescription(claudeResult.answer)
+                .setFooter({ text: 'Powered by Claude AI • I hope this helps while you wait for staff!' });
+
+              if (claudeResult.searchResults && claudeResult.searchResults.length > 0) {
+                for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3); i++) {
+                  const it = claudeResult.searchResults[i];
+                  const title = it.title || 'No title';
+                  const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+                  const link = it.link || it.formattedUrl || '';
+                  const name = `${i + 1}. ${title}`.slice(0, 250);
+                  let value = snippet;
+                  if (link) value += `\n\n${link}`;
+                  value = value.slice(0, 1020);
+                  embed.addFields({ name, value });
+                }
+              }
+
+              const buttons = [];
+              if (claudeResult.searchResults) {
+                for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3, 5); i++) {
+                  const it = claudeResult.searchResults[i];
+                  const label = (it.title || it.formattedUrl || `Source ${i + 1}`).slice(0, 80);
+                  const url = it.link || it.formattedUrl || null;
+                  if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+                }
+              }
+
+              const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+              await searchStatusMsg.edit({ content: null, embeds: [embed], components });
+              await new Promise((r) => setTimeout(r, 5000));
+              return;
+            }
+          }
+
+          // Fallback: search web
           const { items, searchInformation } = await searchWeb(query, 3);
           
           const searchEmbed = new EmbedBuilder()
@@ -288,7 +331,6 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           if (searchInformation?.error) {
             let errorDesc = `⚠️ I encountered an issue while searching (Error ${searchInformation.error}). A staff member will be with you shortly!`;
             
-            // Specifically handle the "service disabled" 403 error
             if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
               errorDesc = `⚠️ **Search API Configuration Issue.**
               
@@ -346,15 +388,11 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed], components });
             
-            // Wait an extra 5 seconds so the user can actually read the result
-            // before the next question scrolls it away
             await new Promise((r) => setTimeout(r, 5000));
           } else {
-            // No direct results found, but let the user know we tried
             searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on the web. A staff member will be with you shortly to assist!`);
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
             
-            // Wait a few seconds before moving on
             await new Promise((r) => setTimeout(r, 6000));
           }
         } catch (err) {
