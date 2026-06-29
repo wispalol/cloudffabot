@@ -180,6 +180,34 @@ module.exports = {
       logger.error('Quick search handler error:', err);
     }
 
+    // ─── Server IP Lookup ───────────────────────────────
+    try {
+      const content = message.content.trim().toLowerCase();
+      const ipKeywords = ['ip', 'server ip', 'join ip', 'what is the ip', 'server address', 'how do i join', 'how to join', 'connect ip'];
+      const matchesIp = ipKeywords.some(kw => content.includes(kw));
+      if (matchesIp && content.length < 200) {
+        const now = Date.now();
+        const last = searchCooldown.get(message.author.id) || 0;
+        if (now - last < SEARCH_COOLDOWN_MS) return;
+        searchCooldown.set(message.author.id, now);
 
+        const embed = new EmbedBuilder()
+          .setTitle('🌍 Server IPs by Region')
+          .setColor(config.embed.color.primary)
+          .setDescription('What region are you in? Here are all our server IPs:')
+          .addFields(
+            { name: '🇬🇧 UK', value: '`51.195.188.185:7001`', inline: false },
+            { name: '🇺🇸 NA West', value: '`67.222.135.60:7024`', inline: false },
+            { name: '🇺🇸 NA East', value: '`172.240.13.115:25660`', inline: false },
+            { name: '🇪🇺 EU Central', value: '`104.128.51.155:25600`', inline: false },
+            { name: '🇺🇸 NA Central', value: '`185.206.148.75:25543`', inline: false },
+          )
+          .setFooter({ text: 'Choose the region closest to you for the best connection!' });
+
+        return message.reply({ embeds: [embed] });
+      }
+    } catch (err) {
+      logger.error('IP lookup handler error:', err);
+    }
   },
 };
