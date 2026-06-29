@@ -71,6 +71,22 @@ module.exports = {
         .setColor(config.embed.color.primary)
         .setFooter({ text: `Powered by ${source}` });
 
+      // If no search results but Claude is configured, ask Claude directly
+      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+      if (items.length === 0 && aiProvider === 'claude' && aiKey) {
+        const claudeAnswer = await askClaude(query);
+        if (claudeAnswer) {
+          const claudeEmbed = new EmbedBuilder()
+            .setTitle(`Answer: ${query}`)
+            .setColor(config.embed.color.primary)
+            .setDescription(claudeAnswer)
+            .setFooter({ text: `Powered by Claude AI` });
+          return interaction.editReply({ embeds: [claudeEmbed] });
+        }
+      }
+
       if (items.length === 0) {
         embed.setDescription(`No results found for **${query}** on ${source}.`);
         return interaction.editReply({ embeds: [embed] });
@@ -93,8 +109,6 @@ module.exports = {
 
       // Build a short synthesized answer and show it above the results
       let summary = null;
-      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
 
       // If Claude is configured, use it for the best answers
       if (aiProvider === 'claude' && aiKey) {

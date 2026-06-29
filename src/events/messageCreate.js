@@ -81,6 +81,22 @@ module.exports = {
             return replyMsg.edit({ content: null, embeds: [embed] });
           }
 
+          const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+          const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+          // If no search results but Claude is configured, ask Claude directly
+          if ((!items || items.length === 0) && aiProvider === 'claude' && aiKey) {
+            const claudeAnswer = await askClaude(query);
+            if (claudeAnswer) {
+              const embed = new EmbedBuilder()
+                .setTitle(`Answer: ${query}`)
+                .setColor(config.embed.color.primary)
+                .setDescription(claudeAnswer)
+                .setFooter({ text: `Powered by Claude AI` });
+              return replyMsg.edit({ content: null, embeds: [embed] });
+            }
+          }
+
           if (!items || items.length === 0) {
             const embed = new EmbedBuilder()
               .setTitle(`Search results for: ${query}`)
@@ -226,6 +242,22 @@ module.exports = {
           return replyMsg.edit({ content: null, embeds: [embed] });
         }
 
+        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+        // If no search results but Claude is configured, ask Claude directly
+        if ((!items || items.length === 0) && aiProvider === 'claude' && aiKey) {
+          const claudeAnswer = await askClaude(query);
+          if (claudeAnswer) {
+            const embed = new EmbedBuilder()
+              .setTitle(`Answer: ${query}`)
+              .setColor(config.embed.color.primary)
+              .setDescription(claudeAnswer)
+              .setFooter({ text: `Powered by Claude AI` });
+            return replyMsg.edit({ content: null, embeds: [embed] });
+          }
+        }
+
         if (!items || items.length === 0) {
           const embed = new EmbedBuilder()
             .setTitle(`Answer: ${query}`)
@@ -245,9 +277,6 @@ module.exports = {
         } else {
           embed.setFooter({ text: 'Powered by search provider' });
         }
-
-        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
 
         let summary = null;
         if (aiProvider === 'claude' && aiKey) {
