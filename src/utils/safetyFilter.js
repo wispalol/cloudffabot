@@ -132,22 +132,32 @@ const ALLOWED_CATEGORIES = {
   ],
 };
 
+// For search queries: must be Minecraft-related or general support, and must not be blocked
 function isQuerySafe(query) {
   const lower = query.toLowerCase().trim();
   if (!lower) return false;
 
-  // Immediately block any query containing blocked keywords
   for (const kw of BLOCKED_KEYWORDS) {
     if (lower.includes(kw)) return false;
   }
 
-  // Check if query matches at least one allowed category
   for (const [, keywords] of Object.entries(ALLOWED_CATEGORIES)) {
     for (const kw of keywords) {
       if (lower.includes(kw)) return true;
     }
   }
 
+  return false;
+}
+
+// For ticket answers: only block if they contain explicitly bad content
+function containsBlockedContent(text) {
+  const lower = text.toLowerCase().trim();
+  if (!lower) return false;
+
+  for (const kw of BLOCKED_KEYWORDS) {
+    if (lower.includes(kw)) return true;
+  }
   return false;
 }
 
@@ -158,4 +168,4 @@ function getBlockedMessage() {
   };
 }
 
-module.exports = { isQuerySafe, getBlockedMessage };
+module.exports = { isQuerySafe, containsBlockedContent, getBlockedMessage };

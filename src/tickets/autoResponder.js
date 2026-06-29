@@ -10,7 +10,7 @@ const { searchWeb } = require('../utils/webSearch');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../utils/claudeAI');
-const { isQuerySafe } = require('../utils/safetyFilter');
+const { isQuerySafe, containsBlockedContent } = require('../utils/safetyFilter');
 const path = require('path');
 const fs = require('fs');
 
@@ -224,6 +224,12 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
 
     const answer = collected.first();
     const answerText = answer.content;
+
+    // ─── Safety Filter Check ──────────────────────────
+    if (containsBlockedContent(answerText)) {
+      await handleSafetyViolation(channel, member, ticketId, userId);
+      return;
+    }
 
     // Check if user is asking for human staff
     if (HUMAN_KEYWORDS.some((kw) => answerText.toLowerCase().includes(kw))) {
@@ -1276,6 +1282,42 @@ function buildEscalateButtons(ticketId, userId = null) {
       .setStyle(ButtonStyle.Success)
       .setEmoji('✅')
   );
+}
+
+async function handleSafetyViolation(channel, member, ticketId, userId) {
+  try {
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const bannedUntil = new Date(Date.now() + TWELVE_HOURS_MS).toISOString();
+
+    const { run, get } = getDb();
+
+    await channel.permissionOverwrites.edit(member.id, { SendMessages: false });
+
+    await channel.send({
+      embeds: [createEmbed({
+        title: '🚫 Ticket Closed — Safety Policy Violation',
+        description: 'Your question was blocked by the **content safety filter**.\n\nYou asked something that is **not appropriate** for this server. Please only ask about:\n• Minecraft server-related questions\n• General support topics (payments, purchases, account help, etc.)\n\n**You are temporarily banned from creating tickets for 12 hours.**\n\nIf you believe this was a mistake, please contact a staff member directly.',
+        color: 0xED4245,
+      })],
+    });
+
+    run(`UPDATE tickets SET status = 'closed', closed_at = datetime('now') WHERE ticket_id = ?`, [ticketId]);
+
+    run(
+      `INSERT INTO ticket_bans (user_id, guild_id, banned_until, reason) VALUES (?, ?, ?, 'Safety policy violation in ticket')`,
+      [userId, channel.guild.id, bannedUntil]
+    );
+
+    await logTicketAction(channel.guild, 'Ticket closed (safety violation)', {
+      ticketId,
+      channel,
+    });
+
+    await new Promise((r) => setTimeout(r, 5000));
+    await channel.delete().catch(() => {});
+  } catch (error) {
+    logger.error('Error handling safety violation:', error);
+  }
 }
 
 async function closeAndDeleteTicket(channel, ticketId, userId) {

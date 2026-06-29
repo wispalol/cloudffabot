@@ -58,6 +58,19 @@ async function handleTicketCreate(interaction) {
   const creatorId = member.id;
 
   const { get, run } = getDb();
+
+  // ─── Ticket Ban Check ──────────────────────────────
+  const ban = get(
+    `SELECT banned_until FROM ticket_bans WHERE user_id = ? AND guild_id = ? AND banned_until > datetime('now') ORDER BY banned_until DESC LIMIT 1`,
+    [creatorId, guild.id]
+  );
+  if (ban) {
+    const remaining = Math.ceil((new Date(ban.banned_until) - Date.now()) / (1000 * 60 * 60));
+    return interaction.reply({
+      embeds: [errorEmbed(`You cannot create a ticket right now due to a **safety policy violation**.\n\n⏳ You can create another ticket in about **${remaining} hour${remaining === 1 ? '' : 's'}**.`)],
+      ephemeral: true,
+    });
+  }
   const existing = get(
     `SELECT channel_id FROM tickets WHERE creator_id = ? AND guild_id = ? AND type = ? AND status = 'open'`,
     [creatorId, guild.id, type]
