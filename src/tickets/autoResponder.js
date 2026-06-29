@@ -6,7 +6,7 @@ const i18n = require('../i18n');
 const { lookupAnticheatBan } = require('../database/anticheatDb');
 const { getDb } = require('../database/database');
 const { generateTranscript } = require('../utils/transcript');
-const { searchGoogle } = require('../utils/googleSearch');
+const { searchWeb } = require('../utils/webSearch');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const path = require('path');
@@ -278,7 +278,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
         const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
         
         try {
-          const { items, searchInformation } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchWeb(query, 3);
           
           const searchEmbed = new EmbedBuilder()
             .setTitle(`🔍 I found some info for: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
@@ -294,8 +294,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               
               The bot is having trouble accessing the search service. Please check:
               
-              1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
+              1. **Tavily API Key:** Ensure this is set in your hosting variables.
               
               A staff member will assist you shortly!`;
             }
@@ -696,7 +695,7 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
     if (mainQuestion && mainQuestion.answer && mainQuestion.answer.length > 5) {
       const query = mainQuestion.answer.trim();
       try {
-        const { items, searchInformation } = await searchGoogle(query, 3);
+        const { items, searchInformation } = await searchWeb(query, 3);
         if (searchInformation?.error) return; // ignore errors here
 
         if (items && items.length > 0) {

@@ -188,10 +188,6 @@ const config = {
   },
 
   // ─── Search / External APIs ────────────────────────────
-  search: {
-    apiKey: process.env.GOOGLE_API_KEY,
-    cx: process.env.GOOGLE_CX,
-  },
   tavily: {
     apiKey: process.env.TAVILY_API_KEY,
     url: process.env.TAVILY_API_URL || 'https://api.tavily.com/search',

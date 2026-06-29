@@ -1,6 +1,6 @@
 const { checkAutoMod, handleAutoMod } = require('../moderation/autoMod');
 const logger = require('../config/logger');
-const { searchGoogle } = require('../utils/googleSearch');
+const { searchWeb } = require('../utils/webSearch');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
@@ -49,7 +49,7 @@ module.exports = {
         const replyMsg = await message.reply({ content: `Searching for: **${query}**...` });
 
         try {
-          const { items, searchInformation } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchWeb(query, 3);
           
           if (searchInformation?.error) {
             const embed = new EmbedBuilder()
@@ -64,8 +64,7 @@ module.exports = {
               
               The bot is having trouble accessing the search service. Please check:
               
-              1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
+              1. **Tavily API Key:** Ensure this is set in your hosting variables.
               
               A staff member will assist you shortly!`;
             }
@@ -177,7 +176,7 @@ module.exports = {
 
         const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
         try {
-          const { items, searchInformation } = await searchGoogle(query, 3);
+          const { items, searchInformation } = await searchWeb(query, 3);
           
           if (searchInformation?.error) {
             const embed = new EmbedBuilder()
@@ -192,8 +191,7 @@ module.exports = {
               
               The bot is having trouble accessing the search service. Please check:
               
-              1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
+              1. **Tavily API Key:** Ensure this is set in your hosting variables.
               
               A staff member will assist you shortly!`;
             }

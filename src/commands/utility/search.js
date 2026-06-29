@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('../../config/client');
 const logger = require('../../config/logger');
-const { searchGoogle } = require('../../utils/googleSearch');
+const { searchWeb } = require('../../utils/webSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
 const { aiSummarize } = require('../../utils/aiSummarizer');
 
@@ -26,20 +26,20 @@ module.exports = {
     const query = interaction.options.getString('query', true);
     const num = interaction.options.getInteger('num') || 3;
 
-    const apiKey = config.search?.apiKey || process.env.GOOGLE_API_KEY;
-    const cx = config.search?.cx || process.env.GOOGLE_CX;
     const tavilyKey = config.tavily?.apiKey || process.env.TAVILY_API_KEY;
 
-    if (!apiKey && !cx && !tavilyKey) {
-      // If no keys at all, we can still fall back to DDG in searchGoogle, 
-      // but let's at least check if some config exists or warn user.
-      // Actually, searchGoogle has DDG as hard fallback, so we can allow it.
+    if (!tavilyKey) {
+      const noKeyEmbed = new EmbedBuilder()
+        .setTitle('Search Unavailable')
+        .setColor(0xED4245)
+        .setDescription('The search feature is currently disabled because the **Tavily API Key** is missing.\n\nTo enable it, please add `TAVILY_API_KEY` to your hosting variables.');
+      return interaction.reply({ embeds: [noKeyEmbed], ephemeral: true });
     }
 
     await interaction.deferReply();
 
     try {
-      const { items, searchInformation } = await searchGoogle(query, num);
+      const { items, searchInformation } = await searchWeb(query, num);
 
       if (searchInformation?.error) {
         const embed = new EmbedBuilder()
@@ -54,8 +54,7 @@ module.exports = {
           
           The bot is having trouble accessing the search service. Please check:
           
-          1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-          2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
+          1. **Tavily API Key:** Ensure this is set in your hosting variables.
           
           A staff member will assist you shortly!`;
         }
