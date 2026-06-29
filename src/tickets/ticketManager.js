@@ -145,9 +145,10 @@ async function handleTicketCreate(interaction) {
       });
     }
 
-    if (guild.ownerId) {
+    const owner = guild.members.cache.get(guild.ownerId);
+    if (owner) {
       overwrites.push({
-        id: guild.ownerId,
+        id: owner.id,
         allow: [
           PermissionFlagsBits.ViewChannel,
           PermissionFlagsBits.SendMessages,
