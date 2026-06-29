@@ -28,6 +28,13 @@ async function searchWeb(query, num = 3) {
       if (res.ok) {
         const data = await res.json();
         const dataItems = data.results || [];
+        
+        logger.info('Tavily Search raw response summary', { 
+          resultsCount: dataItems.length,
+          query: data.query,
+          responseTime: data.response_time
+        });
+
         const normalized = dataItems.map((it) => ({
           title: it.title || it.name || '',
           snippet: it.snippet || it.content || '',
@@ -37,6 +44,8 @@ async function searchWeb(query, num = 3) {
         if (normalized.length > 0) {
           logger.info('Tavily Search results found', { count: normalized.length });
           return { items: normalized.slice(0, num), searchInformation: { source: 'tavily' } };
+        } else {
+          logger.warn('Tavily returned items but they were filtered out during normalization', { rawCount: dataItems.length });
         }
       } else {
         const txt = await res.text();

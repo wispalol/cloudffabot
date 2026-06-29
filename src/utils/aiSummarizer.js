@@ -108,6 +108,7 @@ Answer the question based on the results above:`;
       return answer;
     }
 
+    logger.warn(`AI provider (${provider}) returned an empty answer`);
     return null;
   } catch (err) {
     logger.error(`AI summarization failed (${provider}):`, err);
