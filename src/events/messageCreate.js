@@ -5,7 +5,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, askClaude, isConfigured: claudeConfigured } = require('../utils/claudeAI');
-const { isQuerySafe, getBlockedMessage } = require('../utils/safetyFilter');
+const { isQuerySafe, containsBlockedContent, getBlockedMessage } = require('../utils/safetyFilter');
 
 const config = require('../config/client');
 
@@ -194,6 +194,10 @@ module.exports = {
     // ─── Server IP Lookup ───────────────────────────────
     try {
       const content = message.content.trim().toLowerCase();
+
+      // Skip IP lookup if message contains unsafe content
+      if (containsBlockedContent(content)) return;
+
       const ipKeywords = ['ip', 'server ip', 'join ip', 'what is the ip', 'server address', 'how do i join', 'how to join', 'connect ip'];
       const matchesIp = ipKeywords.some(kw => content.includes(kw));
       if (matchesIp && content.length < 200) {

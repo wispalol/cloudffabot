@@ -45,6 +45,7 @@ const BLOCKED_KEYWORDS = [
 
   // Minecraft Cheat Clients (not child-safe)
   'meteor client', 'meteor hack', 'meteor',
+  'metor', 'metore', 'meteore', 'meteor clinet', 'metore client', 'metor client', 'metore clinet', 'metor clinet',
   'wurst client', 'wurst hack',
   'liquidbounce', 'liquid bounce',
   'impact client',
