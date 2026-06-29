@@ -3,6 +3,7 @@ const config = require('../config/client');
 const { createEmbed } = require('../utils/embeds');
 const logger = require('../config/logger');
 const i18n = require('../i18n');
+const crypto = require('crypto');
 const { lookupAnticheatBan } = require('../database/anticheatDb');
 const { getDb } = require('../database/database');
 const { generateTranscript } = require('../utils/transcript');
@@ -171,6 +172,10 @@ async function startAutoResponse(channel, member, type, ticketId, userId = null)
   const switched = await askLanguagePreference(channel, member, ticketId, effectiveUserId);
   const finalUserId = switched || effectiveUserId;
   const finalQuestions = i18n.getQuestions(type, finalUserId);
+
+  // ─── Verification Code Check ──────────────────────────
+  const verified = await askVerificationCode(channel, member, ticketId, finalUserId);
+  if (!verified) return; // ticket was closed/code expired
 
   await askNextQuestion(channel, member, type, ticketId, finalQuestions, 0, finalUserId);
 }
@@ -1282,6 +1287,101 @@ function buildEscalateButtons(ticketId, userId = null) {
       .setStyle(ButtonStyle.Success)
       .setEmoji('✅')
   );
+}
+
+async function askVerificationCode(channel, member, ticketId, userId) {
+  const code = crypto.randomInt(1000, 9999).toString();
+  const maxAttempts = 3;
+
+  try {
+    const dm = await member.send({
+      embeds: [createEmbed({
+        title: '🔐 Verification Code',
+        description: `Your verification code is:\n\n**${code}**\n\nPlease enter this code in your ticket channel to verify you can receive DMs.\n\nThis code expires in **2 minutes**.`,
+        color: config.embed.color.primary,
+        footerText: 'CloudFFA Bot — Verification',
+      })],
+    });
+
+    await channel.send({
+      embeds: [createEmbed({
+        title: '🔐 Verification Required',
+        description: `${member}, I've sent you a **4-digit verification code** via private message.\n\nPlease check your DMs and enter the code here to continue.\n\n> Don't see it? Make sure you have DMs enabled for this server.`,
+        color: config.embed.color.warning,
+      })],
+    });
+
+    let attempts = 0;
+    while (attempts < maxAttempts) {
+      const remaining = maxAttempts - attempts;
+      try {
+        const collected = await channel.awaitMessages({
+          filter: (m) => m.author.id === member.id && !m.author.bot,
+          max: 1,
+          time: 2 * 60 * 1000,
+          errors: ['time'],
+        });
+
+        const userCode = collected.first().content.trim();
+        if (userCode === code) {
+          await channel.send({
+            embeds: [createEmbed({
+              title: '✅ Verified',
+              description: 'You\'ve been verified! You can now proceed with your ticket.',
+              color: config.embed.color.success,
+            })],
+          });
+          await new Promise((r) => setTimeout(r, 500));
+          return true;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          await channel.send({
+            embeds: [createEmbed({
+              title: '❌ Incorrect Code',
+              description: `That code is incorrect. You have **${remaining - 1} attempt${remaining - 1 === 1 ? '' : 's'}** left.\n\nPlease check your DMs for the correct code.`,
+              color: config.embed.color.error,
+            })],
+          });
+        }
+      } catch {
+        await channel.send({
+          embeds: [createEmbed({
+            title: '⏰ Time Expired',
+            description: 'You took too long to enter the verification code. Please create a new ticket if you still need help.',
+            color: config.embed.color.warning,
+          })],
+        });
+        await new Promise((r) => setTimeout(r, 3000));
+        await closeAndDeleteTicket(channel, ticketId, userId);
+        return false;
+      }
+    }
+
+    await channel.send({
+      embeds: [createEmbed({
+        title: '🚫 Too Many Attempts',
+        description: 'You\'ve entered too many incorrect codes. Please create a new ticket to try again.\n\nMake sure to check your DMs for the correct code.',
+        color: config.embed.color.error,
+      })],
+    });
+    await new Promise((r) => setTimeout(r, 3000));
+    await closeAndDeleteTicket(channel, ticketId, userId);
+    return false;
+  } catch (err) {
+    logger.error('Verification DM failed:', err);
+    await channel.send({
+      embeds: [createEmbed({
+        title: '❌ Cannot Send DM',
+        description: `${member}, I couldn't send you a direct message. Please make sure you have **DMs enabled** for this server and that you're not blocking me.\n\nThe ticket will be closed. Please enable DMs and create a new ticket if you still need help.`,
+        color: config.embed.color.error,
+      })],
+    });
+    await new Promise((r) => setTimeout(r, 5000));
+    await closeAndDeleteTicket(channel, ticketId, userId);
+    return false;
+  }
 }
 
 async function handleSafetyViolation(channel, member, ticketId, userId) {
