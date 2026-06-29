@@ -53,10 +53,52 @@ module.exports = {
         const query = content.split(' ').slice(prefixG ? 1 : 1).join(' ').trim();
         if (!query) return;
 
+        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
         // Inform user we're searching
-        const replyMsg = await message.reply({ content: `Searching for: **${query}**...` });
+        const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
 
         try {
+          // Primary: Use Claude AI if configured
+          if (aiProvider === 'claude' && aiKey) {
+            const claudeResult = await askClaudeWithSearch(query, 3);
+            if (claudeResult.answer) {
+              const embed = new EmbedBuilder()
+                .setTitle(`Answer: ${query}`)
+                .setColor(config.embed.color.primary)
+                .setDescription(claudeResult.answer)
+                .setFooter({ text: `Powered by Claude AI` });
+
+              if (claudeResult.searchResults && claudeResult.searchResults.length > 0) {
+                for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3); i++) {
+                  const it = claudeResult.searchResults[i];
+                  const title = it.title || 'No title';
+                  const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+                  const link = it.link || it.formattedUrl || '';
+                  const name = `${i + 1}. ${title}`.slice(0, 250);
+                  let value = snippet;
+                  if (link) value += `\n\n${link}`;
+                  value = value.slice(0, 1020);
+                  embed.addFields({ name, value });
+                }
+              }
+
+              const buttons = [];
+              if (claudeResult.searchResults) {
+                for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3, 5); i++) {
+                  const it = claudeResult.searchResults[i];
+                  const label = (it.title || it.formattedUrl || `Source ${i + 1}`).slice(0, 80);
+                  const url = it.link || it.formattedUrl || null;
+                  if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+                }
+              }
+              const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+              return replyMsg.edit({ content: null, embeds: [embed], components });
+            }
+          }
+
+          // Fallback: Search web
           const { items, searchInformation } = await searchWeb(query, 3);
           
           if (searchInformation?.error) {
@@ -79,22 +121,6 @@ module.exports = {
             
             embed.setDescription(errorDesc);
             return replyMsg.edit({ content: null, embeds: [embed] });
-          }
-
-          const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-          const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
-          // If no search results but Claude is configured, ask Claude directly
-          if ((!items || items.length === 0) && aiProvider === 'claude' && aiKey) {
-            const claudeAnswer = await askClaude(query);
-            if (claudeAnswer) {
-              const embed = new EmbedBuilder()
-                .setTitle(`Answer: ${query}`)
-                .setColor(config.embed.color.primary)
-                .setDescription(claudeAnswer)
-                .setFooter({ text: `Powered by Claude AI` });
-              return replyMsg.edit({ content: null, embeds: [embed] });
-            }
           }
 
           if (!items || items.length === 0) {
@@ -217,8 +243,50 @@ module.exports = {
       const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
       if (!query || query.length < 5) return;
 
-      const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
+      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+      const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
       try {
+        // Primary: Use Claude AI if configured
+        if (aiProvider === 'claude' && aiKey) {
+          const claudeResult = await askClaudeWithSearch(query, 3);
+          if (claudeResult.answer) {
+            const embed = new EmbedBuilder()
+              .setTitle(`Answer: ${query}`)
+              .setColor(config.embed.color.primary)
+              .setDescription(claudeResult.answer)
+              .setFooter({ text: `Powered by Claude AI` });
+
+            if (claudeResult.searchResults && claudeResult.searchResults.length > 0) {
+              for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3); i++) {
+                const it = claudeResult.searchResults[i];
+                const title = it.title || 'No title';
+                const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+                const link = it.link || it.formattedUrl || '';
+                const name = `${i + 1}. ${title}`.slice(0, 250);
+                let value = snippet;
+                if (link) value += `\n\n${link}`;
+                value = value.slice(0, 1020);
+                embed.addFields({ name, value });
+              }
+            }
+
+            const buttons = [];
+            if (claudeResult.searchResults) {
+              for (let i = 0; i < Math.min(claudeResult.searchResults.length, 3, 5); i++) {
+                const it = claudeResult.searchResults[i];
+                const label = (it.title || it.formattedUrl || `Source ${i + 1}`).slice(0, 80);
+                const url = it.link || it.formattedUrl || null;
+                if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+              }
+            }
+            const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+            return replyMsg.edit({ content: null, embeds: [embed], components });
+          }
+        }
+
+        // Fallback: Search web and summarize
         const { items, searchInformation } = await searchWeb(query, 3);
 
         if (searchInformation?.error) {
@@ -240,22 +308,6 @@ module.exports = {
 
           embed.setDescription(errorDesc);
           return replyMsg.edit({ content: null, embeds: [embed] });
-        }
-
-        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
-        // If no search results but Claude is configured, ask Claude directly
-        if ((!items || items.length === 0) && aiProvider === 'claude' && aiKey) {
-          const claudeAnswer = await askClaude(query);
-          if (claudeAnswer) {
-            const embed = new EmbedBuilder()
-              .setTitle(`Answer: ${query}`)
-              .setColor(config.embed.color.primary)
-              .setDescription(claudeAnswer)
-              .setFooter({ text: `Powered by Claude AI` });
-            return replyMsg.edit({ content: null, embeds: [embed] });
-          }
         }
 
         if (!items || items.length === 0) {

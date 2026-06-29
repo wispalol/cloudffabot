@@ -40,6 +40,49 @@ module.exports = {
     await interaction.deferReply();
 
     try {
+      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+      // Primary: Use Claude AI if configured (it searches the web automatically)
+      if (aiProvider === 'claude' && aiKey) {
+        const claudeResult = await askClaudeWithSearch(query, num);
+        if (claudeResult.answer) {
+          const embed = new EmbedBuilder()
+            .setTitle(`Answer: ${query}`)
+            .setColor(config.embed.color.primary)
+            .setDescription(claudeResult.answer)
+            .setFooter({ text: `Powered by Claude AI` });
+
+          if (claudeResult.searchResults && claudeResult.searchResults.length > 0) {
+            for (let i = 0; i < Math.min(claudeResult.searchResults.length, num); i++) {
+              const it = claudeResult.searchResults[i];
+              const title = it.title || 'No title';
+              const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+              const link = it.link || it.formattedUrl || '';
+              const name = `${i + 1}. ${title}`.slice(0, 250);
+              let value = snippet;
+              if (link) value += `\n\n${link}`;
+              value = value.slice(0, 1020);
+              embed.addFields({ name, value });
+            }
+          }
+
+          const buttons = [];
+          if (claudeResult.searchResults) {
+            for (let i = 0; i < Math.min(claudeResult.searchResults.length, num, 5); i++) {
+              const it = claudeResult.searchResults[i];
+              const label = (it.title || it.formattedUrl || `Source ${i + 1}`).slice(0, 80);
+              const url = it.link || it.formattedUrl || null;
+              if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+            }
+          }
+
+          const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+          return interaction.editReply({ embeds: [embed], components });
+        }
+      }
+
+      // Fallback: Search web
       const { items, searchInformation } = await searchWeb(query, num);
 
       if (searchInformation?.error) {
@@ -49,7 +92,6 @@ module.exports = {
         
         let errorDesc = `⚠️ I encountered an issue while searching (Error ${searchInformation.error}). A staff member will be with you shortly!`;
         
-        // Specifically handle the "service disabled" 403 error
         if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
           errorDesc = `⚠️ **Search API Configuration Issue.**
           
@@ -64,35 +106,17 @@ module.exports = {
         return interaction.editReply({ embeds: [embed] });
       }
 
-      // Build embed with top results
       const source = searchInformation?.source ? (searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1)) : 'Web';
       const embed = new EmbedBuilder()
         .setTitle(`Search results for: ${query}`)
         .setColor(config.embed.color.primary)
         .setFooter({ text: `Powered by ${source}` });
 
-      // If no search results but Claude is configured, ask Claude directly
-      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
-      if (items.length === 0 && aiProvider === 'claude' && aiKey) {
-        const claudeAnswer = await askClaude(query);
-        if (claudeAnswer) {
-          const claudeEmbed = new EmbedBuilder()
-            .setTitle(`Answer: ${query}`)
-            .setColor(config.embed.color.primary)
-            .setDescription(claudeAnswer)
-            .setFooter({ text: `Powered by Claude AI` });
-          return interaction.editReply({ embeds: [claudeEmbed] });
-        }
-      }
-
       if (items.length === 0) {
         embed.setDescription(`No results found for **${query}** on ${source}.`);
         return interaction.editReply({ embeds: [embed] });
       }
 
-      // Add as fields (title as linked name, snippet + link in value)
       for (let i = 0; i < Math.min(items.length, num); i++) {
         const it = items[i];
         const title = it.title || 'No title';
@@ -107,10 +131,8 @@ module.exports = {
         embed.addFields({ name, value });
       }
 
-      // Build a short synthesized answer and show it above the results
       let summary = null;
 
-      // If Claude is configured, use it for the best answers
       if (aiProvider === 'claude' && aiKey) {
         const claudeResult = await askClaudeWithSearch(query, num);
         if (claudeResult.answer) {
@@ -131,7 +153,6 @@ module.exports = {
         embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
       }
 
-      // Build buttons for quick open (max 5)
       const buttons = [];
       for (let i = 0; i < Math.min(items.length, num, 5); i++) {
         const it = items[i];
@@ -144,7 +165,6 @@ module.exports = {
 
       const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
 
-      // If there are more results than we showed, include quick note
       if ((searchInformation?.totalResults || 0) > num) {
         embed.addFields({ name: '\u200b', value: `Showing top ${num} results.` });
       }
