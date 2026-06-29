@@ -193,9 +193,9 @@ const config = {
     url: process.env.TAVILY_API_URL || 'https://api.tavily.com/search',
   },
   ai: {
-    provider: process.env.AI_PROVIDER || 'openai', // 'openai' or 'groq'
+    provider: process.env.AI_PROVIDER || 'openai', // 'openai', 'groq', or 'claude'
     apiKey: process.env.AI_API_KEY,
-    model: process.env.AI_MODEL, // e.g. 'gpt-3.5-turbo' or 'mixtral-8x7b-32768'
+    model: process.env.AI_MODEL, // e.g. 'gpt-3.5-turbo', 'mixtral-8x7b-32768', or 'claude-3-5-sonnet-20240620'
   },
 };
 

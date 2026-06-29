@@ -48,37 +48,45 @@ Answer the question based on the results above:`;
     } else if (provider === 'groq') {
       apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
       selectedModel = model || 'mixtral-8x7b-32768';
+    } else if (provider === 'claude') {
+      apiUrl = 'https://api.anthropic.com/v1/messages';
+      selectedModel = model || 'claude-3-5-sonnet-20240620';
+      headers['x-api-key'] = apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      delete headers['Authorization'];
     } else {
       logger.error('Unknown AI provider configured:', provider);
       return null;
     }
 
-    const body = JSON.stringify({
-      model: selectedModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'subject', content: userPrompt } // Some APIs might prefer 'user', but 'user' is standard.
-      ],
-      max_tokens: 250,
-      temperature: 0.7
-    });
-
-    // Actually, 'subject' is not a role. It should be 'user'.
-    const correctBody = JSON.stringify({
-      model: selectedModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 250,
-      temperature: 0.7
-    });
+    let body;
+    if (provider === 'claude') {
+      body = JSON.stringify({
+        model: selectedModel,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 250,
+        temperature: 0.7
+      });
+    } else {
+      body = JSON.stringify({
+        model: selectedModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 250,
+        temperature: 0.7
+      });
+    }
 
     logger.info(`Requesting AI summary from ${provider}`, { query, model: selectedModel });
     const res = await fetch(apiUrl, {
       method: 'POST',
       headers,
-      body: correctBody
+      body: body
     });
 
     if (!res.ok) {
@@ -88,7 +96,12 @@ Answer the question based on the results above:`;
     }
 
     const data = await res.json();
-    const answer = data.choices?.[0]?.message?.content?.trim();
+    let answer;
+    if (provider === 'claude') {
+      answer = data.content?.[0]?.text?.trim();
+    } else {
+      answer = data.choices?.[0]?.message?.content?.trim();
+    }
     
     if (answer) {
       logger.info(`AI summary generated successfully (${provider})`);

@@ -314,7 +314,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               if (heuristicSummary) {
                 searchEmbed.setDescription(heuristicSummary);
               } else {
-                searchEmbed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+                searchEmbed.setDescription(`I found some resources for **${query}** that might help:`);
               }
             }
 
@@ -711,7 +711,7 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
           if (summary) {
             searchEmbed.setDescription(summary);
           } else {
-            searchEmbed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+            searchEmbed.setDescription(`I found some resources for **${query}** that might help you immediately:`);
           }
 
           if (searchInformation?.source) {

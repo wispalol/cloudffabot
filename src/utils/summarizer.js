@@ -34,8 +34,8 @@ function summarizeFromItems(items, maxChars = 400) {
     out = (out + ' ' + s).trim();
   }
 
-  // If still empty, fall back to first snippet truncated
-  if (!out) {
+  // If still empty, fall back to first available text
+  if (!out && texts.length > 0) {
     out = texts[0].slice(0, maxChars);
   }
 

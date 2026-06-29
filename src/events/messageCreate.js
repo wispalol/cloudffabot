@@ -101,7 +101,7 @@ module.exports = {
           if (summary) {
             embed.setDescription(summary);
           } else {
-            embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+            embed.setDescription(`I found some resources for **${query}** that might help:`);
           }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {
@@ -233,7 +233,7 @@ module.exports = {
           if (summary) {
             embed.setDescription(summary);
           } else {
-            embed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+            embed.setDescription(`I found some resources for **${query}** that might help:`);
           }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {
