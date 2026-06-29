@@ -65,7 +65,7 @@ module.exports = {
               The bot is having trouble accessing the search service. Please check:
               
               1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Google API:** If using Google, ensure the API is enabled and billing is linked.
+              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
               
               A staff member will assist you shortly!`;
             }
@@ -193,7 +193,7 @@ module.exports = {
               The bot is having trouble accessing the search service. Please check:
               
               1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Google API:** If using Google, ensure the API is enabled and billing is linked.
+              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
               
               A staff member will assist you shortly!`;
             }

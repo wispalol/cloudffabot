@@ -295,7 +295,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               The bot is having trouble accessing the search service. Please check:
               
               1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-              2. **Google API:** If using Google, ensure the API is enabled and billing is linked.
+              2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
               
               A staff member will assist you shortly!`;
             }
@@ -352,9 +352,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             await new Promise((r) => setTimeout(r, 5000));
           } else {
             // No direct results found, but let the user know we tried
-            searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on Google. A staff member will be with you shortly to assist!
-            
-            *Tip: Ensure your Search Engine ID (CX) is configured to "Search the entire web" in the Google Programmable Search Engine control panel for better results.*`);
+            searchEmbed.setDescription(`I couldn't find any specific information for **${query}** on the web. A staff member will be with you shortly to assist!`);
             await searchStatusMsg.edit({ content: null, embeds: [searchEmbed] });
             
             // Wait a few seconds before moving on

@@ -2,7 +2,7 @@ const logger = require('../config/logger');
 const config = require('../config/client');
 
 /**
- * Perform a search request using Google Custom Search or Tavily.
+ * Perform a search request using various providers (Tavily or Google Custom Search).
  * Returns an object: { items, searchInformation }
  */
 async function searchGoogle(query, num = 3) {
@@ -55,15 +55,15 @@ async function searchGoogle(query, num = 3) {
     } catch (err) {
       logger.error('Tavily API request failed:', err);
     }
-    // If Tavily was configured, we tried it. If it found nothing or failed, 
-    // we should NOT fallback to Google if the user explicitly provided a Tavily key,
-    // as they likely want to avoid the Google errors they were seeing.
-    // However, to be safe, if Google is ALSO configured, we only fall back if Tavily returned ZERO results.
+    
+    // If Tavily is configured, we DO NOT fall back to Google.
+    // This satisfies the user's request to "get rid of google".
+    logger.info('Tavily search returned no results, skipping Google fallback per configuration.');
+    return { items: [], searchInformation: { source: 'tavily', totalResults: 0 } };
   }
 
-  // Fallback to Google Custom Search ONLY if Tavily is not used or returned no results
-  // Skip Google if the user explicitly provided a Tavily key (to avoid the 403 errors they were seeing)
-  if (!tavilyKey && apiKey && cx) {
+  // Fallback to Google Custom Search ONLY if Tavily is NOT configured
+  if (apiKey && cx) {
     try {
       const url = new URL('https://www.googleapis.com/customsearch/v1');
       url.searchParams.set('key', apiKey);

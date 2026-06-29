@@ -55,7 +55,7 @@ module.exports = {
           The bot is having trouble accessing the search service. Please check:
           
           1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
-          2. **Google API:** If using Google, ensure the API is enabled and billing is linked.
+          2. **Search API:** If using an external service, ensure the API is enabled and billing is linked.
           
           A staff member will assist you shortly!`;
         }
@@ -118,12 +118,12 @@ module.exports = {
 
       // If there are more results than we showed, include quick note
       if ((searchInformation?.totalResults || 0) > num) {
-        embed.addFields({ name: '\u200b', value: `Showing top ${num} results. View more on Google.` });
+        embed.addFields({ name: '\u200b', value: `Showing top ${num} results.` });
       }
 
       await interaction.editReply({ embeds: [embed], components });
     } catch (error) {
-      logger.error('Failed to perform Google search:', error);
+      logger.error('Failed to perform web search:', error);
       try {
         await interaction.editReply({ content: 'An error occurred while searching. Please try again later.' });
       } catch {}

@@ -4,7 +4,7 @@ const logger = require('../config/logger');
 /**
  * AI-powered summarizer that uses OpenAI or Groq to generate a human-readable answer.
  * @param {string} query The original user question.
- * @param {Array} items Search results from searchGoogle.
+ * @param {Array} items Search results from the search utility.
  * @returns {Promise<string|null>}
  */
 async function aiSummarize(query, items) {
