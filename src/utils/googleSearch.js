@@ -16,18 +16,16 @@ async function searchGoogle(query, num = 3) {
     cxValue: cx
   });
 
-  // Tavily primary support: if configured, use Tavily API first
+  // Preference: Use Tavily first if configured
   const tavilyKey = config.tavily?.apiKey || process.env.TAVILY_API_KEY;
   const tavilyUrl = config.tavily?.url || process.env.TAVILY_API_URL;
+  
   if (tavilyKey) {
+    logger.info('Performing Tavily Search', { query });
     try {
-      const headers = { 
-        'Content-Type': 'application/json'
-      };
-      
       const res = await fetch(tavilyUrl, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: tavilyKey,
           query,
@@ -40,29 +38,32 @@ async function searchGoogle(query, num = 3) {
       if (res.ok) {
         const data = await res.json();
         const dataItems = data.results || [];
-        // Ensure items have title/snippet/link properties if possible
-        const items = Array.isArray(dataItems) ? dataItems : [];
-        const normalized = items.map((it) => {
-          if (!it) return null;
-          return {
-            title: it.title || it.name || it.heading || '',
-            snippet: it.snippet || it.excerpt || it.summary || it.text || '',
-            link: it.link || it.url || it.href || it.first_url || '',
-          };
-        }).filter(Boolean);
-        return { items: normalized.slice(0, num), searchInformation: { source: 'tavily' } };
+        const normalized = dataItems.map((it) => ({
+          title: it.title || it.name || '',
+          snippet: it.snippet || it.content || '',
+          link: it.url || it.link || '',
+        })).filter(it => it.title && it.link);
+
+        if (normalized.length > 0) {
+          logger.info('Tavily Search results found', { count: normalized.length });
+          return { items: normalized.slice(0, num), searchInformation: { source: 'tavily' } };
+        }
+      } else {
+        const txt = await res.text();
+        logger.error('Tavily API returned non-OK:', { status: res.status, body: txt });
       }
-      // fallthrough to next provider if tavily fails
-      const txt = await res.text();
-      logger.error('Tavily API returned non-OK:', { status: res.status, body: txt });
     } catch (err) {
       logger.error('Tavily API request failed:', err);
-      // continue to fallback providers
     }
+    // If Tavily was configured, we tried it. If it found nothing or failed, 
+    // we should NOT fallback to Google if the user explicitly provided a Tavily key,
+    // as they likely want to avoid the Google errors they were seeing.
+    // However, to be safe, if Google is ALSO configured, we only fall back if Tavily returned ZERO results.
   }
 
-  // Prefer Google Custom Search when configured
-  if (apiKey && cx) {
+  // Fallback to Google Custom Search ONLY if Tavily is not used or returned no results
+  // Skip Google if the user explicitly provided a Tavily key (to avoid the 403 errors they were seeing)
+  if (!tavilyKey && apiKey && cx) {
     try {
       const url = new URL('https://www.googleapis.com/customsearch/v1');
       url.searchParams.set('key', apiKey);

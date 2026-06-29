@@ -286,19 +286,18 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
             .setFooter({ text: 'I hope this helps while you wait for staff!' });
 
           if (searchInformation?.error) {
-            let errorDesc = `⚠️ I tried to search Google but encountered an issue (Error ${searchInformation.error}). A staff member will be with you shortly!`;
+            let errorDesc = `⚠️ I encountered an issue while searching (Error ${searchInformation.error}). A staff member will be with you shortly!`;
             
             // Specifically handle the "service disabled" 403 error
             if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
-              errorDesc = `⚠️ **Google Custom Search API issue.**
+              errorDesc = `⚠️ **Search API Configuration Issue.**
               
-              It seems the API is still not fully active or configured. Please check:
+              The bot is having trouble accessing the search service. Please check:
               
-              1. **Enable the API:** Click **"ENABLE"** at [this link](https://console.cloud.google.com/apis/library/customsearch.googleapis.com).
-              2. **Link Billing:** Ensure a **Billing Account** is linked to your project [here](https://console.cloud.google.com/billing). (Google requires this even for the free tier).
-              3. **API Key Restrictions:** Ensure your API Key doesn't have restrictions that block my host.
+              1. **Tavily API Key:** Ensure this is set in your hosting variables (Highly Recommended).
+              2. **Google API:** If using Google, ensure the API is enabled and billing is linked.
               
-              Once fixed, wait a minute and try again!`;
+              A staff member will assist you shortly!`;
             }
             
             searchEmbed.setDescription(errorDesc);
