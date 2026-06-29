@@ -19,21 +19,27 @@ async function searchGoogle(query, num = 3) {
   // Tavily primary support: if configured, use Tavily API first
   const tavilyKey = config.tavily?.apiKey || process.env.TAVILY_API_KEY;
   const tavilyUrl = config.tavily?.url || process.env.TAVILY_API_URL;
-  if (tavilyKey && tavilyUrl) {
+  if (tavilyKey) {
     try {
-      const tUrl = new URL(tavilyUrl);
-      tUrl.searchParams.set('q', query);
-      tUrl.searchParams.set('num', String(Math.min(Math.max(num, 1), 10)));
+      const headers = { 
+        'Content-Type': 'application/json'
+      };
+      
+      const res = await fetch(tavilyUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          api_key: tavilyKey,
+          query,
+          search_depth: "basic",
+          include_answer: false,
+          max_results: Math.min(Math.max(num, 1), 10)
+        })
+      });
 
-      const headers = { 'Accept': 'application/json' };
-      // Prefer Bearer Authorization but some endpoints may accept key param
-      headers['Authorization'] = `Bearer ${tavilyKey}`;
-
-      const res = await fetch(tUrl.toString(), { headers });
       if (res.ok) {
         const data = await res.json();
-        // Normalize common shapes: items | results | data.results
-        const dataItems = data.items || data.results || data.data?.results || [];
+        const dataItems = data.results || [];
         // Ensure items have title/snippet/link properties if possible
         const items = Array.isArray(dataItems) ? dataItems : [];
         const normalized = items.map((it) => {

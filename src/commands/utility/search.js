@@ -3,6 +3,7 @@ const config = require('../../config/client');
 const logger = require('../../config/logger');
 const { searchGoogle } = require('../../utils/googleSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
+const { aiSummarize } = require('../../utils/aiSummarizer');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -94,7 +95,11 @@ module.exports = {
       }
 
       // Build a short synthesized answer and show it above the results
-      const summary = summarizeFromItems(items, 400);
+      let summary = await aiSummarize(query, items);
+      if (!summary) {
+        summary = summarizeFromItems(items, 400);
+      }
+
       if (summary) {
         embed.setDescription(summary);
       } else {

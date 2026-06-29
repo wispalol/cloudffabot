@@ -194,7 +194,12 @@ const config = {
   },
   tavily: {
     apiKey: process.env.TAVILY_API_KEY,
-    url: process.env.TAVILY_API_URL,
+    url: process.env.TAVILY_API_URL || 'https://api.tavily.com/search',
+  },
+  ai: {
+    provider: process.env.AI_PROVIDER || 'openai', // 'openai' or 'groq'
+    apiKey: process.env.AI_API_KEY,
+    model: process.env.AI_MODEL, // e.g. 'gpt-3.5-turbo' or 'mixtral-8x7b-32768'
   },
 };
 

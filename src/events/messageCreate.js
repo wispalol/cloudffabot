@@ -3,6 +3,7 @@ const logger = require('../config/logger');
 const { searchGoogle } = require('../utils/googleSearch');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { summarizeFromItems } = require('../utils/summarizer');
+const { aiSummarize } = require('../utils/aiSummarizer');
 
 // Simple per-user cooldown to prevent abuse of message-based searches
 const searchCooldown = new Map(); // userId -> timestamp (ms)
@@ -90,7 +91,11 @@ module.exports = {
             .setColor('#5865F2')
             .setFooter({ text: 'Powered by search provider' });
 
-          const summary = summarizeFromItems(items, 400);
+          let summary = await aiSummarize(query, items);
+          if (!summary) {
+            summary = summarizeFromItems(items, 400);
+          }
+
           if (summary) {
             embed.setDescription(summary);
           } else {
@@ -214,7 +219,11 @@ module.exports = {
             .setColor('#5865F2')
             .setFooter({ text: 'Powered by search provider' });
 
-          const summary = summarizeFromItems(items, 400);
+          let summary = await aiSummarize(query, items);
+          if (!summary) {
+            summary = summarizeFromItems(items, 400);
+          }
+
           if (summary) {
             embed.setDescription(summary);
           } else {
