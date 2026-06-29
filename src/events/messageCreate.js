@@ -4,10 +4,18 @@ const { searchWeb } = require('../utils/webSearch');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
+const { askClaudeWithSearch, askClaude } = require('../utils/claudeAI');
+const { findFaqEntry, formatFaqList } = require('../utils/faq');
+const { createEmbed } = require('../utils/embeds');
+const config = require('../config/client');
 
 // Simple per-user cooldown to prevent abuse of message-based searches
 const searchCooldown = new Map(); // userId -> timestamp (ms)
 const SEARCH_COOLDOWN_MS = 10 * 1000; // 10s
+
+// Per-channel cooldown for auto-answers (prevents spam in busy channels)
+const channelCooldown = new Map(); // channelId -> timestamp (ms)
+const CHANNEL_COOLDOWN_MS = 30 * 1000; // 30s between auto-answers per channel
 
 module.exports = {
   name: 'messageCreate',
@@ -136,138 +144,159 @@ module.exports = {
       logger.error('Quick search handler error:', err);
     }
 
-    // Auto-answer simple questions without prefix
+    // Auto-answer simple questions and help requests — works in ALL channels
     try {
       const content2 = message.content.trim();
-      // Ignore very long messages
       if (content2.length > 300) return;
 
+      const cleanContent = content2.replace(/<@!?\d+>/g, '').trim().toLowerCase();
+
       const isLikelyQuestion = (() => {
-        const cleanContent = content2.replace(/<@!?\d+>/g, '').trim().toLowerCase();
         if (cleanContent.endsWith('?') && cleanContent.length > 5) return true;
-        // Starts with common question words or "how to"
         const questionStarters = /^(who|what|when|where|why|how|is|are|do|does|did|can|could|should|would|will|how to|how do i|can i|where is)\b/i;
-        return questionStarters.test(cleanContent) && cleanContent.split(' ').length >= 3;
+        if (questionStarters.test(cleanContent) && cleanContent.split(' ').length >= 3) return true;
+        const helpPhrases = /^(help|i need|i want|i have|i'm looking|does anyone|can anyone|anyone know|i have a)\b/i;
+        return helpPhrases.test(cleanContent) && cleanContent.split(' ').length >= 3;
       })();
 
-      if (isLikelyQuestion) {
-        // Auto-answer logic:
-        // 1. If mentioned -> always search.
-        // 2. If NOT mentioned -> only search in ticket channels (channels starting with 'ticket-', 'bug-', 'appeal-', etc.)
-        const isMentioned = message.mentions.has(message.client.user);
-        const isTicketChannel = message.channel.name && (
-          message.channel.name.startsWith('ticket-') || 
-          message.channel.name.startsWith('bug-') || 
-          message.channel.name.startsWith('appeal-') ||
-          message.channel.name.startsWith('report-') ||
-          message.channel.name.startsWith('support-')
-        );
+      if (!isLikelyQuestion) return;
 
-        if (!isMentioned && !isTicketChannel) {
-           return; 
+      const isMentioned = message.mentions.has(message.client.user);
+
+      // Check FAQ first (fast, no API cost)
+      const faqEntry = findFaqEntry(cleanContent);
+      if (faqEntry) {
+        if (!faqEntry.triggerSearch) {
+          const now = Date.now();
+          const lastUser = searchCooldown.get(message.author.id) || 0;
+          if (now - lastUser < SEARCH_COOLDOWN_MS) return;
+          searchCooldown.set(message.author.id, now);
+
+          const embed = createEmbed({
+            title: `💡 ${faqEntry.category}`,
+            description: faqEntry.answer,
+            color: config.embed.color.primary,
+            footerText: 'Was this helpful? Feel free to ask more!',
+          });
+          await message.reply({ embeds: [embed] });
+          return;
         }
+        // triggerSearch entries fall through to web search
+      }
+
+      // Check channel cooldown for non-mentioned auto-answers
+      if (!isMentioned) {
+        const channelLast = channelCooldown.get(message.channel.id) || 0;
         const now = Date.now();
-        const last = searchCooldown.get(message.author.id) || 0;
-        if (now - last < SEARCH_COOLDOWN_MS) return; // respect cooldown
-        searchCooldown.set(message.author.id, now);
+        if (now - channelLast < CHANNEL_COOLDOWN_MS) return;
+        channelCooldown.set(message.channel.id, now);
+      }
 
-        const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
-        if (!query || query.length < 5) return;
+      // User cooldown for web search
+      const now = Date.now();
+      const last = searchCooldown.get(message.author.id) || 0;
+      if (now - last < SEARCH_COOLDOWN_MS) return;
+      searchCooldown.set(message.author.id, now);
 
-        const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
-        try {
-          const { items, searchInformation } = await searchWeb(query, 3);
-          
-          if (searchInformation?.error) {
-            const embed = new EmbedBuilder()
-              .setTitle(`Answer: ${query}`)
-              .setColor('#FF0000');
-            
-            let errorDesc = `⚠️ I encountered an error (Error ${searchInformation.error}) while searching. A staff member will be with you shortly!`;
-            
-            // Specifically handle the "service disabled" 403 error
-            if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
-              errorDesc = `⚠️ **Search API Configuration Issue.**
-              
-              The bot is having trouble accessing the search service. Please check:
-              
-              1. **Tavily API Key:** Ensure this is set in your hosting variables.
-              
-              A staff member will assist you shortly!`;
-            }
-            
-            embed.setDescription(errorDesc);
-            return replyMsg.edit({ content: null, embeds: [embed] });
-          }
+      const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
+      if (!query || query.length < 5) return;
 
-          if (!items || items.length === 0) {
-            // If we're in a ticket channel and didn't find anything, just delete the "searching" message to keep it clean
-            if (isTicketChannel && !isMentioned) {
-              return replyMsg.delete().catch(() => {});
-            }
-            
-            const embed = new EmbedBuilder()
-              .setTitle(`Answer: ${query}`)
-              .setColor('#5865F2')
-              .setDescription(`No results found for **${query}**.`);
-            
-            return replyMsg.edit({ content: null, embeds: [embed] });
-          }
+      const replyMsg = await message.reply({ content: `Let me look that up for you: **${query}**...` });
+      try {
+        const { items, searchInformation } = await searchWeb(query, 3);
 
+        if (searchInformation?.error) {
           const embed = new EmbedBuilder()
             .setTitle(`Answer: ${query}`)
-            .setColor('#5865F2');
+            .setColor('#FF0000');
 
-          if (searchInformation?.source) {
-            const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
-            embed.setFooter({ text: `Results from ${source}` });
-          } else {
-            embed.setFooter({ text: 'Powered by search provider' });
+          let errorDesc = `⚠️ I encountered an error (Error ${searchInformation.error}) while searching. A staff member will be with you shortly!`;
+
+          if (searchInformation.error === 403 && (searchInformation.errorText?.includes('SERVICE_DISABLED') || searchInformation.errorText?.includes('accessNotConfigured'))) {
+            errorDesc = `⚠️ **Search API Configuration Issue.**
+
+            The bot is having trouble accessing the search service. Please check:
+
+            1. **Tavily API Key:** Ensure this is set in your hosting variables.
+
+            A staff member will assist you shortly!`;
           }
 
-          let summary = await aiSummarize(query, items);
-          if (!summary) {
-            summary = summarizeFromItems(items, 400);
-          }
-
-          if (summary) {
-            embed.setDescription(summary);
-          } else {
-            embed.setDescription(`I found some resources for **${query}** that might help:`);
-          }
-
-          for (let i = 0; i < Math.min(items.length, 3); i++) {
-            const it = items[i];
-            const title = it.title || 'No title';
-            const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
-            const link = it.link || it.formattedUrl || '';
-            const name = `${i + 1}. ${title}`.slice(0, 250);
-            let value = snippet;
-            if (link) value += `\n\n${link}`;
-            value = value.slice(0, 1020);
-            embed.addFields({ name, value });
-          }
-
-          const buttons = [];
-          for (let i = 0; i < Math.min(items.length, 3, 5); i++) {
-            const it = items[i];
-            const label = (it.title || it.formattedUrl || `Result ${i + 1}`).slice(0, 80);
-            const url = it.link || it.formattedUrl || null;
-            if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
-          }
-
-          const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
-          await replyMsg.edit({ content: null, embeds: [embed], components });
-        } catch (err) {
-          logger.error('Auto-search failed:', err);
-          try { 
-            if (isTicketChannel && !isMentioned) {
-              await replyMsg.delete().catch(() => {});
-            } else {
-              await replyMsg.edit({ content: 'Sorry — I failed to look that up. Try again later.' });
-            }
-          } catch {}
+          embed.setDescription(errorDesc);
+          return replyMsg.edit({ content: null, embeds: [embed] });
         }
+
+        if (!items || items.length === 0) {
+          const embed = new EmbedBuilder()
+            .setTitle(`Answer: ${query}`)
+            .setColor('#5865F2')
+            .setDescription(`I couldn't find an answer for **${query}**.\n\n📚 Try \`/faq\` to search common topics\n🎫 Open a ticket in **#tickets** for personalized help`);
+
+          return replyMsg.edit({ content: null, embeds: [embed] });
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`Answer: ${query}`)
+          .setColor('#5865F2');
+
+        if (searchInformation?.source) {
+          const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
+          embed.setFooter({ text: `Results from ${source}` });
+        } else {
+          embed.setFooter({ text: 'Powered by search provider' });
+        }
+
+        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+        let summary = null;
+        if (aiProvider === 'claude' && aiKey) {
+          const claudeResult = await askClaudeWithSearch(query, 3);
+          if (claudeResult.answer) {
+            summary = claudeResult.answer;
+          }
+        }
+
+        if (!summary) {
+          summary = await aiSummarize(query, items);
+        }
+        if (!summary) {
+          summary = summarizeFromItems(items, 400);
+        }
+
+        if (summary) {
+          embed.setDescription(summary);
+        } else {
+          embed.setDescription(`I found some resources for **${query}** that might help:`);
+        }
+
+        for (let i = 0; i < Math.min(items.length, 3); i++) {
+          const it = items[i];
+          const title = it.title || 'No title';
+          const snippet = it.snippet ? it.snippet.replace(/\n/g, ' ') : '';
+          const link = it.link || it.formattedUrl || '';
+          const name = `${i + 1}. ${title}`.slice(0, 250);
+          let value = snippet;
+          if (link) value += `\n\n${link}`;
+          value = value.slice(0, 1020);
+          embed.addFields({ name, value });
+        }
+
+        const buttons = [];
+        for (let i = 0; i < Math.min(items.length, 3, 5); i++) {
+          const it = items[i];
+          const label = (it.title || it.formattedUrl || `Result ${i + 1}`).slice(0, 80);
+          const url = it.link || it.formattedUrl || null;
+          if (url) buttons.push(new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url));
+        }
+
+        const components = buttons.length ? [new ActionRowBuilder().addComponents(buttons)] : [];
+        await replyMsg.edit({ content: null, embeds: [embed], components });
+      } catch (err) {
+        logger.error('Auto-search failed:', err);
+        try {
+          await replyMsg.edit({ content: 'Sorry — I failed to look that up. Try again later.' });
+        } catch {}
       }
     } catch (err) {
       logger.error('Auto-answer handler error:', err);

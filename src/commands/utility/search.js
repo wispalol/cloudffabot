@@ -4,6 +4,7 @@ const logger = require('../../config/logger');
 const { searchWeb } = require('../../utils/webSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
 const { aiSummarize } = require('../../utils/aiSummarizer');
+const { askClaudeWithSearch } = require('../../utils/claudeAI');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -91,7 +92,21 @@ module.exports = {
       }
 
       // Build a short synthesized answer and show it above the results
-      let summary = await aiSummarize(query, items);
+      let summary = null;
+      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
+      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
+
+      // If Claude is configured, use it for the best answers
+      if (aiProvider === 'claude' && aiKey) {
+        const claudeResult = await askClaudeWithSearch(query, num);
+        if (claudeResult.answer) {
+          summary = claudeResult.answer;
+        }
+      }
+
+      if (!summary) {
+        summary = await aiSummarize(query, items);
+      }
       if (!summary) {
         summary = summarizeFromItems(items, 400);
       }

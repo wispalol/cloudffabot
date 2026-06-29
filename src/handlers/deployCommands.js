@@ -12,7 +12,7 @@ const { deployCommands } = require('./commandHandler');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   logger.info(`Logged in as ${client.user.tag}, deploying commands...`);
   await deployCommands(client);
   logger.info('Command deployment complete. Disconnecting.');
