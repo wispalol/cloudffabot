@@ -8,7 +8,7 @@ const { aiSummarize } = require('../../utils/aiSummarizer');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('search')
-    .setDescription('Search Google and return the top results.')
+    .setDescription('Search the web and return the top results.')
     .addStringOption(option =>
       option.setName('query')
         .setDescription('What to search for')
@@ -65,16 +65,14 @@ module.exports = {
       }
 
       // Build embed with top results
-      const source = searchInformation?.source === 'google' ? 'Google' : (searchInformation?.source === 'tavily' ? 'Tavily' : 'Web');
+      const source = searchInformation?.source ? (searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1)) : 'Web';
       const embed = new EmbedBuilder()
         .setTitle(`Search results for: ${query}`)
         .setColor(config.embed.color.primary)
         .setFooter({ text: `Powered by ${source}` });
 
       if (items.length === 0) {
-        embed.setDescription(`No results found for **${query}** on ${source}.
-        
-        *Tip: If you're using Google and not getting results, ensure your Search Engine ID (CX) is configured to "Search the entire web".*`);
+        embed.setDescription(`No results found for **${query}** on ${source}.`);
         return interaction.editReply({ embeds: [embed] });
       }
 

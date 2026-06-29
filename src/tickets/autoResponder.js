@@ -319,6 +319,11 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
               }
             }
 
+            if (searchInformation?.source) {
+              const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
+              searchEmbed.setFooter({ text: `Results from ${source} • I hope this helps while you wait for staff!` });
+            }
+
             for (let i = 0; i < Math.min(items.length, 3); i++) {
               const it = items[i];
               const title = it.title || 'No title';
@@ -699,8 +704,7 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
         if (items && items.length > 0) {
           const searchEmbed = new EmbedBuilder()
             .setTitle(`🔍 Automatic Search: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`)
-            .setColor(config.embed.color.primary)
-            .setFooter({ text: 'I found some resources that might help you immediately.' });
+            .setColor(config.embed.color.primary);
 
           let summary = await aiSummarize(query, items);
           if (!summary) {
@@ -711,6 +715,13 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
             searchEmbed.setDescription(summary);
           } else {
             searchEmbed.setDescription('I couldn\'t find a quick answer, but I found some helpful links for you:');
+          }
+
+          if (searchInformation?.source) {
+            const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
+            searchEmbed.setFooter({ text: `Results from ${source} • I found some resources that might help you immediately.` });
+          } else {
+            searchEmbed.setFooter({ text: 'I found some resources that might help you immediately.' });
           }
 
           for (let i = 0; i < Math.min(items.length, 3); i++) {

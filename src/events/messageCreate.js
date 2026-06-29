@@ -78,17 +78,21 @@ module.exports = {
             const embed = new EmbedBuilder()
               .setTitle(`Search results for: ${query}`)
               .setColor('#5865F2')
-              .setDescription(`No results found for **${query}** on Google.
-              
-              *Tip: Ensure your Search Engine ID (CX) is configured to "Search the entire web" in the Programmable Search Engine control panel.*`);
+              .setDescription(`No results found for **${query}**.`);
             
             return replyMsg.edit({ content: null, embeds: [embed] });
           }
 
           const embed = new EmbedBuilder()
             .setTitle(`Search results for: ${query}`)
-            .setColor('#5865F2')
-            .setFooter({ text: 'Powered by search provider' });
+            .setColor('#5865F2');
+
+          if (searchInformation?.source) {
+            const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
+            embed.setFooter({ text: `Results from ${source}` });
+          } else {
+            embed.setFooter({ text: 'Powered by search provider' });
+          }
 
           let summary = await aiSummarize(query, items);
           if (!summary) {
@@ -214,8 +218,14 @@ module.exports = {
 
           const embed = new EmbedBuilder()
             .setTitle(`Answer: ${query}`)
-            .setColor('#5865F2')
-            .setFooter({ text: 'Powered by search provider' });
+            .setColor('#5865F2');
+
+          if (searchInformation?.source) {
+            const source = searchInformation.source.charAt(0).toUpperCase() + searchInformation.source.slice(1);
+            embed.setFooter({ text: `Results from ${source}` });
+          } else {
+            embed.setFooter({ text: 'Powered by search provider' });
+          }
 
           let summary = await aiSummarize(query, items);
           if (!summary) {
