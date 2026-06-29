@@ -5,6 +5,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, askClaude, isConfigured: claudeConfigured } = require('../utils/claudeAI');
+const { isQuerySafe, getBlockedMessage } = require('../utils/safetyFilter');
 
 const config = require('../config/client');
 
@@ -49,6 +50,16 @@ module.exports = {
 
         const query = content.split(' ').slice(prefixG ? 1 : 1).join(' ').trim();
         if (!query) return;
+
+        // ─── Safety Filter ─────────────────────────────
+        if (!isQuerySafe(query)) {
+          const blocked = getBlockedMessage();
+          const embed = new EmbedBuilder()
+            .setTitle(blocked.title)
+            .setColor(0xED4245)
+            .setDescription(blocked.description);
+          return message.reply({ embeds: [embed] });
+        }
 
         // Inform user we're searching
         const replyMsg = await message.reply({ content: `👋 **Hello!** How can we help you today? If you need anything, simply ask me and I'll search it up for you. I'm here to help! Let me look into: **${query}**...` });

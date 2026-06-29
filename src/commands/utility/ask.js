@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const config = require('../../config/client');
 const logger = require('../../config/logger');
 const { askClaudeWithSearch, askClaude } = require('../../utils/claudeAI');
+const { isQuerySafe, getBlockedMessage } = require('../../utils/safetyFilter');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -35,6 +36,16 @@ module.exports = {
         .setTitle('Claude AI Unavailable')
         .setColor(config.embed.color.warning)
         .setDescription(`The AI provider is set to **${config.ai?.provider || process.env.AI_PROVIDER}**, not Claude.\n\nTo use this command, set \`AI_PROVIDER=claude\` in your environment.`);
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    // ─── Safety Filter ─────────────────────────────
+    if (!isQuerySafe(question)) {
+      const blocked = getBlockedMessage();
+      const embed = new EmbedBuilder()
+        .setTitle(blocked.title)
+        .setColor(0xED4245)
+        .setDescription(blocked.description);
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 

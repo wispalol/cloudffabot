@@ -5,6 +5,7 @@ const { searchWeb } = require('../../utils/webSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
 const { aiSummarize } = require('../../utils/aiSummarizer');
 const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../../utils/claudeAI');
+const { isQuerySafe, getBlockedMessage } = require('../../utils/safetyFilter');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -35,6 +36,16 @@ module.exports = {
         .setColor(0xED4245)
         .setDescription('The search feature is currently disabled because the **Tavily API Key** is missing.\n\nTo enable it, please add `TAVILY_API_KEY` to your hosting variables.');
       return interaction.reply({ embeds: [noKeyEmbed], ephemeral: true });
+    }
+
+    // ─── Safety Filter ─────────────────────────────
+    if (!isQuerySafe(query)) {
+      const blocked = getBlockedMessage();
+      const embed = new EmbedBuilder()
+        .setTitle(blocked.title)
+        .setColor(0xED4245)
+        .setDescription(blocked.description);
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
     await interaction.deferReply();

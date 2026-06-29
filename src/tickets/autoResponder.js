@@ -10,6 +10,7 @@ const { searchWeb } = require('../utils/webSearch');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
 const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../utils/claudeAI');
+const { isQuerySafe } = require('../utils/safetyFilter');
 const path = require('path');
 const fs = require('fs');
 
@@ -273,7 +274,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
 
     if (isLikelyQuestion && answerText.length < 300) {
       const query = answerText.replace(/\?+$/, '').trim();
-      if (query.length >= 5) {
+      if (query.length >= 5 && isQuerySafe(query)) {
         // Wait a moment for the professional response to be seen
         await new Promise((r) => setTimeout(r, 1000));
         const searchStatusMsg = await channel.send({ content: `🔍 Searching for: **${query}**...` });
@@ -732,6 +733,7 @@ async function finishAutoResponse(channel, member, type, ticketId, userId) {
 
     if (mainQuestion && mainQuestion.answer && mainQuestion.answer.length > 5) {
       const query = mainQuestion.answer.trim();
+      if (!isQuerySafe(query)) return; // skip search if query is unsafe
       try {
         const { items, searchInformation } = await searchWeb(query, 3);
         if (searchInformation?.error) return; // ignore errors here
