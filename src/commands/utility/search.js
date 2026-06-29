@@ -4,7 +4,7 @@ const logger = require('../../config/logger');
 const { searchWeb } = require('../../utils/webSearch');
 const { summarizeFromItems } = require('../../utils/summarizer');
 const { aiSummarize } = require('../../utils/aiSummarizer');
-const { askClaudeWithSearch } = require('../../utils/claudeAI');
+const { askClaudeWithSearch, isConfigured: claudeConfigured } = require('../../utils/claudeAI');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -40,11 +40,8 @@ module.exports = {
     await interaction.deferReply();
 
     try {
-      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
       // Primary: Use Claude AI if configured (it searches the web automatically)
-      if (aiProvider === 'claude' && aiKey) {
+      if (claudeConfigured()) {
         const claudeResult = await askClaudeWithSearch(query, num);
         if (claudeResult.answer) {
           const embed = new EmbedBuilder()
@@ -133,7 +130,7 @@ module.exports = {
 
       let summary = null;
 
-      if (aiProvider === 'claude' && aiKey) {
+      if (claudeConfigured()) {
         const claudeResult = await askClaudeWithSearch(query, num);
         if (claudeResult.answer) {
           summary = claudeResult.answer;

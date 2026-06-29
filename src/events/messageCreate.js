@@ -4,7 +4,7 @@ const { searchWeb } = require('../utils/webSearch');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { summarizeFromItems } = require('../utils/summarizer');
 const { aiSummarize } = require('../utils/aiSummarizer');
-const { askClaudeWithSearch, askClaude } = require('../utils/claudeAI');
+const { askClaudeWithSearch, askClaude, isConfigured: claudeConfigured } = require('../utils/claudeAI');
 const { findFaqEntry, formatFaqList } = require('../utils/faq');
 const { createEmbed } = require('../utils/embeds');
 const config = require('../config/client');
@@ -53,15 +53,12 @@ module.exports = {
         const query = content.split(' ').slice(prefixG ? 1 : 1).join(' ').trim();
         if (!query) return;
 
-        const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-        const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
         // Inform user we're searching
         const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
 
         try {
           // Primary: Use Claude AI if configured
-          if (aiProvider === 'claude' && aiKey) {
+          if (claudeConfigured()) {
             const claudeResult = await askClaudeWithSearch(query, 3);
             if (claudeResult.answer) {
               const embed = new EmbedBuilder()
@@ -243,13 +240,10 @@ module.exports = {
       const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
       if (!query || query.length < 5) return;
 
-      const aiProvider = config.ai?.provider || process.env.AI_PROVIDER;
-      const aiKey = config.ai?.apiKey || process.env.AI_API_KEY;
-
       const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
       try {
         // Primary: Use Claude AI if configured
-        if (aiProvider === 'claude' && aiKey) {
+        if (claudeConfigured()) {
           const claudeResult = await askClaudeWithSearch(query, 3);
           if (claudeResult.answer) {
             const embed = new EmbedBuilder()
@@ -331,7 +325,7 @@ module.exports = {
         }
 
         let summary = null;
-        if (aiProvider === 'claude' && aiKey) {
+        if (claudeConfigured()) {
           const claudeResult = await askClaudeWithSearch(query, 3);
           if (claudeResult.answer) {
             summary = claudeResult.answer;

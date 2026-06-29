@@ -5,7 +5,8 @@ const { searchWeb } = require('./webSearch');
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 function getApiKey() {
-  return config.ai?.apiKey || process.env.AI_API_KEY;
+  const key = config.ai?.apiKey || process.env.AI_API_KEY;
+  return key && key.trim() ? key : null;
 }
 
 function getModel() {
@@ -106,4 +107,10 @@ async function askClaudeWithSearch(query, numResults = 5) {
   return { answer, searchResults };
 }
 
-module.exports = { askClaude, askClaudeWithSearch, callClaude };
+function isConfigured() {
+  const provider = config.ai?.provider || process.env.AI_PROVIDER;
+  const key = getApiKey();
+  return provider === 'claude' && !!key;
+}
+
+module.exports = { askClaude, askClaudeWithSearch, callClaude, isConfigured };
