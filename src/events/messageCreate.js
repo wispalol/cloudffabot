@@ -54,7 +54,7 @@ module.exports = {
         if (!query) return;
 
         // Inform user we're searching
-        const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
+        const replyMsg = await message.reply({ content: `👋 **Hello!** How can we help you today? If you need anything, simply ask me and I'll search it up for you. I'm here to help! Let me look into: **${query}**...` });
 
         try {
           // Primary: Use Claude AI if configured
@@ -240,7 +240,7 @@ module.exports = {
       const query = content2.replace(/<@!?\d+>/g, '').replace(/\?+$/, '').trim();
       if (!query || query.length < 5) return;
 
-      const replyMsg = await message.reply({ content: `Let me check on that for you: **${query}**...` });
+      const replyMsg = await message.reply({ content: `👋 **Hello!** How can we help you today? If you need anything, simply ask me and I'll search it up for you. I'm here to help! Let me look into: **${query}**...` });
       try {
         // Primary: Use Claude AI if configured
         if (claudeConfigured()) {
