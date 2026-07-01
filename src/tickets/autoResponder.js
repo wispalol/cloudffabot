@@ -441,20 +441,6 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       });
     }
 
-    const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
-      const isDenial = denialPhrases.some((p) => answerText.toLowerCase().includes(p));
-      if (isDenial && index < questions.length - 1) {
-        await channel.send({
-          embeds: [createEmbed({
-            title: i18n.t('auto.ban.denial_title', userId),
-            description: i18n.t('auto.ban.denial_desc', userId),
-            color: config.embed.color.primary,
-            footerText: i18n.t('auto.ban.denial_footer', userId),
-          })],
-        });
-      }
-    }
-
     // Brief pause then next question
     await new Promise((r) => setTimeout(r, 1000));
     await askNextQuestion(channel, member, type, ticketId, questions, index + 1, userId);
