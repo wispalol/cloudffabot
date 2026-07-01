@@ -190,10 +190,10 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
 
   const fields = [];
 
-  if (type === 'ban_appeal' && index === 0) {
+  if (type === 'opmcheck_premium' && index === 0) {
     fields.push({
-      name: i18n.t('auto.question.tip_ban', userId),
-      value: i18n.t('auto.question.tip_ban_value', userId),
+      name: '💡 Tip',
+      value: 'Please provide your **Minecraft IGN** and **Discord ID** so we can set up your premium access.',
     });
   } else {
     fields.push({
@@ -419,7 +419,7 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
     // Check for evidence mentions
     const evidenceKeywords = ['evidence', 'screenshot', 'proof', 'dowód', 'screen', 'prueba', 'captura'];
     const hasEvidence = evidenceKeywords.some((kw) => answerText.toLowerCase().includes(kw));
-    if (hasEvidence && (type === 'bug_report' || type === 'player_report')) {
+    if (hasEvidence && type === 'bug_report') {
       await new Promise((r) => setTimeout(r, 800));
       await channel.send({
         embeds: [createEmbed({
@@ -430,113 +430,14 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
       });
     }
 
-    // Ban appeal specific: check for ban ID / player name (only on first question)
-    if (type === 'ban_appeal' && index === 0) {
-      const banId = extractBanId(answerText);
-      const playerName = extractPlayerName(answerText);
-      const banStringId = extractBanStringId(answerText);
-      const uuid = extractUuid(answerText);
-      const antiCheatId = extractNumericId(answerText);
-      const identifier = banStringId || uuid || playerName || antiCheatId || banId;
-
-      if (identifier) {
-        await channel.send({
-          embeds: [createEmbed({
-            title: i18n.t('auto.ban.checking_title', userId),
-            description: i18n.t('auto.ban.checking_desc', userId, { banId: identifier }),
-            color: config.embed.color.primary,
-          })],
-        });
-
-        // Discord guild ban lookup (only if a Discord ID was provided)
-        if (banId) {
-          const banInfo = await lookupBan(channel.guild, banId);
-          if (banInfo) {
-            await channel.send({
-              embeds: [createEmbed({
-                title: i18n.t('auto.ban.found_title', userId),
-                description: i18n.t('auto.ban.found_desc', userId, {
-                  tag: banInfo.user.tag,
-                  id: banInfo.user.id,
-                  reason: banInfo.reason || 'No reason recorded',
-                }),
-                color: config.embed.color.success,
-                footerText: i18n.t('auto.ban.found_footer', userId),
-              })],
-            });
-          } else {
-            await channel.send({
-              embeds: [createEmbed({
-                title: i18n.t('auto.ban.not_found_title', userId),
-                description: i18n.t('auto.ban.not_found_desc', userId, { banId }),
-                color: config.embed.color.error,
-              })],
-            });
-          }
-        }
-
-        // Anticheat DB lookup (by player name, UUID, or ban ID)
-        const acBan = await lookupAnticheatBan(identifier);
-        if (acBan) {
-          const bannedAt = acBan.banned_at ? new Date(acBan.banned_at).toLocaleString() : 'Unknown';
-          const expires = acBan.expires_at ? new Date(acBan.expires_at).toLocaleString() : 'Permanent';
-          const status = acBan.unbanned ? 'Unbanned' : 'Active';
-          const hackLabel = acBan.check_name || 'Unknown Hack';
-
-          await channel.send({
-            embeds: [createEmbed({
-              title: '🚨 ANTICHEAT RECORD FOUND',
-              description: `Our systems have **conclusively detected** the use of prohibited modifications on your account. This is **not** a matter of opinion — the evidence is permanently recorded in our database.\n\n` +
-                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                `**Player:** \`${acBan.player_name || 'Unknown'}\`\n` +
-                `**UUID:** \`${acBan.player_uuid || 'N/A'}\`\n` +
-                `**Detection:** \`${hackLabel}\`\n` +
-                `**Date:** ${bannedAt}\n` +
-                `**Expires:** ${expires}\n` +
-                `**Status:** ${status}\n` +
-                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-                `You were banned for **${hackLabel}**. This is a clear violation of our rules.`,
-              color: 0xED4245,
-              footerText: 'This record cannot be disputed — denial will not override system evidence.',
-            })],
-          });
-
-          // Store anticheat record for verdict display
-          const acAnswers = ANSWERS.get(ticketId) || [];
-          acAnswers.push({
-            question: '_anticheat_record',
-            answer: JSON.stringify({
-              hackLabel: hackLabel,
-              playerName: acBan.player_name || 'Unknown',
-              playerUuid: acBan.player_uuid || '',
-              bannedAt: acBan.banned_at || '',
-              expiresAt: acBan.expires_at || '',
-              unbanned: acBan.unbanned ? true : false,
-              banId: acBan.ban_id || '',
-            }),
-          });
-          ANSWERS.set(ticketId, acAnswers);
-
-          // Hard hacks → immediate verdict, soft hacks → continue with questions
-          const hardHacks = ['killaura', 'autoclicker', 'reach', 'fly', 'speed', 'bhop', 'antiknockback', 'velocity', 'scaffold', 'tower', 'nuker', 'cheststealer', 'aimassist', 'aimbot', 'triggerbot', 'esp', 'wallhack', 'xray', 'noslowdown', 'inventorymove', 'antibot', 'crasher', 'illegal', 'blink', 'phase', 'disabler'];
-          const isHardHack = hardHacks.some(h => hackLabel.toLowerCase().includes(h));
-          if (isHardHack) {
-            await new Promise((r) => setTimeout(r, 1000));
-            return finishAutoResponse(channel, member, type, ticketId, userId);
-          }
-
-          // Soft hack: use modified questions (skip "Why were you banned?" etc.)
-          const acQuestions = i18n.getQuestions('ban_appeal_with_record', userId);
-          if (acQuestions.length > 0) {
-            questions = acQuestions.map(q => q.replace(/\{hack\}/g, hackLabel));
-          }
-        } else if (process.env.ANTICHEAT_DB_HOST) {
-          await channel.send({
-            embeds: [createEmbed({
-              title: i18n.t('auto.ban.anticheat_not_found', userId),
-              color: config.embed.color.error,
-            })],
-          });
+    // Opmcheck Premium specific: acknowledge IGN and Discord ID (only on first question)
+    if (type === 'opmcheck_premium' && index === 0) {
+      await channel.send({
+        embeds: [createEmbed({
+          title: '⚡ Opmcheck Premium',
+          description: 'Thank you for your interest! I\'ve noted your information. A staff member will process your premium request shortly.\n\nPlease continue answering the remaining questions.',
+          color: config.embed.color.success,
+        })],
         }
       }
 
@@ -614,27 +515,6 @@ async function generateProfessionalResponse(answerText, type, question, question
           inline: true,
         },
       ],
-    });
-  }
-
-  // Answers mentioning ban-related terms in ban appeal
-  if (type === 'ban_appeal' && (lower.includes('ban') || lower.includes('appeal') || lower.includes('unban'))) {
-    return createEmbed({
-      title: i18n.t('auto.response.normal_title', userId),
-      description: `${i18n.t('auto.response.normal_desc', userId)}\n\n${i18n.t('auto.response.followup_ban', userId)}`,
-      color: config.embed.color.success,
-      fields: [
-        {
-          name: i18n.t('auto.response.field_progress', userId),
-          value: i18n.t('auto.response.field_progress_value', userId, {
-            answered: answers.length,
-            total: totalQuestions,
-            remaining: totalQuestions - answers.length,
-          }),
-          inline: true,
-        },
-      ],
-      footerText: i18n.t('auto.response.footer', userId),
     });
   }
 
@@ -1045,66 +925,14 @@ async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
   const typeName = getTicketTypeName(type);
 
   switch (type) {
-    case 'ban_appeal': {
-      const analysis = analyzeBanAppeal(answers);
-
-      const analysisTitleKey = `auto.ban_analysis.${analysis.verdict}_title`;
-      const analysisDescKey = `auto.ban_analysis.${analysis.verdict}_desc`;
-
-      const verdictColors = { fair: 0x57F287, unfair: 0xED4245, mixed: 0xFEE75C, anticheat_confirmed: 0xED4245 };
-
-      const isAcConfirmed = analysis.verdict === 'anticheat_confirmed';
-      const verdictFields = [
-        {
-          name: i18n.t(analysisTitleKey, userId),
-          value: i18n.t(analysisDescKey, userId, isAcConfirmed ? { hackLabel: analysis.hackLabel } : {}),
-        },
-      ];
-
-      if (isAcConfirmed) {
-        const bannedAt = analysis.bannedAt ? new Date(analysis.bannedAt).toLocaleString() : 'Unknown';
-        const expires = analysis.expiresAt ? new Date(analysis.expiresAt).toLocaleString() : 'Permanent';
-        verdictFields.push(
-          { name: '👤 Player', value: `\`${analysis.playerName}\``, inline: true },
-          { name: '🔍 Detected Hack', value: `\`${analysis.hackLabel}\``, inline: true },
-          { name: '🆔 Ban ID', value: `\`${analysis.banId}\``, inline: true },
-          { name: '📅 Banned At', value: bannedAt, inline: true },
-          { name: '⏳ Expires', value: expires, inline: true },
-          { name: '✅ Status', value: analysis.unbanned ? 'Unbanned' : 'Active', inline: true },
-        );
-      }
-
+    case 'opmcheck_premium': {
       await channel.send({
         embeds: [createEmbed({
-          title: i18n.t('auto.ban_analysis.analysis_title', userId),
-          description: i18n.t('auto.ban_analysis.analysis_desc', userId),
-          color: verdictColors[analysis.verdict] || 0xFEE75C,
-          fields: verdictFields,
-        })],
-      });
-
-      const reason = answers.find((a) =>
-        a.question.toLowerCase().includes('why') || a.question.toLowerCase().includes('lifted')
-      );
-
-      const reasonStr = reason
-        ? `📌 You mentioned: "${reason.answer.substring(0, 200)}${reason.answer.length > 200 ? '...' : ''}"`
-        : '';
-
-      await channel.send({
-        embeds: [createEmbed({
-          title: i18n.t('auto.help.ban_appeal.title', userId),
-          description: i18n.t('auto.help.ban_appeal.desc', userId, { reason: reasonStr }),
+          title: '⚡ Opmcheck Premium',
+          description: 'Thank you for your interest in Opmcheck Premium! Your request has been logged and will be reviewed by our team.\n\n**What happens next:**\n• A staff member will review your information\n• They will verify your eligibility\n• You will receive a response here\n\n⏱ Response time is typically within **24 hours**.',
           color: config.embed.color.primary,
-          fields: [
-            {
-              name: i18n.t('auto.help.ban_appeal.field_important', userId),
-              value: i18n.t('auto.help.ban_appeal.field_important_value', userId),
-            },
-          ],
         })],
       });
-      return analysis;
       break;
     }
 
@@ -1113,17 +941,6 @@ async function sendAutoHelp(channel, member, type, answers, ticketId, userId) {
         embeds: [createEmbed({
           title: i18n.t('auto.help.bug_report.title', userId),
           description: i18n.t('auto.help.bug_report.desc', userId),
-          color: config.embed.color.primary,
-        })],
-      });
-      break;
-    }
-
-    case 'player_report': {
-      await channel.send({
-        embeds: [createEmbed({
-          title: i18n.t('auto.help.player_report.title', userId),
-          description: i18n.t('auto.help.player_report.desc', userId),
           color: config.embed.color.primary,
         })],
       });
@@ -1265,9 +1082,8 @@ function extractBanStringId(text) {
 
 function getTicketTypeName(type) {
   const typeMap = {
-    ban_appeal: 'Ban Appeal',
+    opmcheck_premium: 'Opmcheck Premium',
     bug_report: 'Bug Report',
-    player_report: 'Player Report',
     general_support: 'General Support',
     purchase_support: 'Purchase Support',
   };

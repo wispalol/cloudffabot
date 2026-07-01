@@ -208,19 +208,13 @@ module.exports = {
       desc: 'He registrado todas tus respuestas. Esto es lo que sucede a continuación:\n\n• Tu caso ha sido registrado en nuestro sistema\n• Un miembro del personal lo revisará lo antes posible\n• Recibirás una notificación aquí cuando haya una actualización\n\n**Si necesitas asistencia inmediata**, haz clic en el botón de abajo para solicitar un miembro del personal.\n**Si estás satisfecho**, puedes cerrar el ticket usando el botón en la parte superior de este canal.',
     },
     help: {
-      ban_appeal: {
-        title: '🔨 Apelación de Baneo — Próximos Pasos',
-        desc: 'Gracias por enviar tu apelación de baneo. Aquí está el proceso:\n\n**1. Revisión** — Un miembro del personal revisará tu apelación y el motivo de tu baneo\n**2. Decisión** — Recibirás una respuesta: Aprobada o Denegada\n**3. Resolución** — Si se aprueba, tu baneo será levantado\n\n**Consejos para una apelación exitosa:**\n• Sé honesto y asume la responsabilidad cuando sea apropiado\n• Demuestra que entiendes la regla que se rompió\n• Explica qué harás diferente en el futuro\n\n{reason}\n\n⏱ El tiempo de respuesta es típicamente dentro de **24 horas**.',
-        field_important: '📌 Importante',
-        field_important_value: 'Pingear repetidamente al personal o crear múltiples tickets puede afectar negativamente tu apelación.',
+      opmcheck_premium: {
+        title: '⚡ Opmcheck Premium — Próximos Pasos',
+        desc: 'Gracias por tu interés en Opmcheck Premium. Así es como se manejará:\n\n**1. Verificación** — Un miembro del personal verificará tu solicitud\n**2. Configuración** — Configuraremos el acceso premium para ti\n**3. Confirmación** — Recibirás una confirmación una vez configurado\n\n**Qué obtienes con Opmcheck Premium:**\n• Funciones avanzadas de consulta de anticheat\n• Soporte prioritario\n• Historial de baneos y análisis extendido\n\n⏱ El tiempo de respuesta es típicamente dentro de **24 horas**.',
       },
       bug_report: {
         title: '🐛 Reporte de Bug — Próximos Pasos',
         desc: 'Gracias por reportar este bug. Tu reporte nos ayuda a mejorar el servidor.\n\n**Qué sucede después:**\n• Tu reporte se registra en nuestro sistema\n• Nuestro equipo intentará reproducir el bug\n• Si se confirma, se añadirá a nuestra cola de correcciones\n\n**Para ayudarnos a resolverlo más rápido:**\n• Si tienes capturas de pantalla o video, compártelos aquí\n• Nota si esto sucede constantemente o aleatoriamente\n• Menciona los pasos que podemos seguir para reproducirlo\n\nRecibirás una actualización aquí cuando tengamos más información.',
-      },
-      player_report: {
-        title: '👤 Reporte de Jugador — Proceso',
-        desc: 'Gracias por enviar tu reporte. Así es como se manejará:\n\n**1. Revisión** — Un moderador revisará la evidencia proporcionada\n**2. Investigación** — El jugador reportado puede ser contactado\n**3. Acción** — Si se rompieron las reglas, se tomarán las medidas apropiadas\n\n⚠️ **Por favor ten en cuenta:**\n• Los reportes falsos pueden resultar en acciones contra tu cuenta\n• No compartas este reporte en canales públicos\n• Serás notificado del resultado',
       },
       general_support: {
         title: '❓ Soporte General — Recursos',
@@ -254,25 +248,14 @@ module.exports = {
   },
 
   questions: {
-    ban_appeal: [
+    opmcheck_premium: [
       '¿Cuál es tu nombre de usuario de Minecraft (IGN)?',
-      '¿Por qué fuiste baneado?',
-      '¿Por qué debería levantarse tu baneo?',
-      '¿Cuánto tiempo llevas en el servidor?',
-      '¿Aceptas seguir las reglas de ahora en adelante?',
-      '¿Hay algo más que te gustaría añadir sobre tu situación?',
-      '¿Cómo te enteraste de nuestro servidor?',
-      '¿Qué harás diferente si se te da una segunda oportunidad?',
-    ],
-    ban_appeal_with_record: [
-      '¿Cuál es tu nombre de usuario de Minecraft (IGN)?',
-      '¿Admites haber usado **{hack}** en nuestro servidor?',
-      '¿Por qué lo usaste?',
-      '¿Entiendes que usar ventajas injustas va contra las reglas?',
-      '¿Cuánto tiempo llevas en el servidor?',
-      '¿Aceptas seguir las reglas de ahora en adelante?',
+      '¿Cuál es tu ID de usuario de Discord?',
+      '¿Qué función premium te interesa?',
+      '¿Has leído los términos y condiciones premium?',
+      '¿Aceptas las reglas del servicio premium?',
+      '¿Cómo te enteraste de Opmcheck Premium?',
       '¿Hay algo más que te gustaría añadir?',
-      '¿Qué harás diferente si se te da una segunda oportunidad?',
     ],
     bug_report: [
       '¿Qué bug encontraste? Descríbelo en detalle.',
@@ -283,15 +266,6 @@ module.exports = {
       '¿Ocurre cada vez o solo a veces?',
       '¿Qué mensaje de error (si hubo alguno) viste?',
       '¿Ya has intentado algunos pasos para solucionarlo?',
-    ],
-    player_report: [
-      '¿A quién estás reportando? (nombre completo de Discord)',
-      '¿Qué regla rompieron?',
-      '¿Cuándo sucedió? (fecha y hora)',
-      '¿Tienes alguna evidencia? (capturas, video, registros de chat)',
-      '¿En qué canal ocurrió?',
-      '¿Has tenido problemas anteriores con este jugador?',
-      '¿Cómo afectó este incidente tu experiencia en el servidor?',
     ],
     staff_report: [
       '¿A qué miembro del personal estás reportando?',

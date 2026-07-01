@@ -21,24 +21,17 @@ const config = {
     panelChannelId: process.env.TICKET_PANEL_CHANNEL_ID,
     // Questions shown per ticket type when the ticket opens
     questions: {
-      'ban_appeal': [
-        'What is your Discord username (including discriminator)?',
-        'Why were you banned?',
-        'Why should your ban be lifted?',
-        'How long have you been on the server?',
-        'Do you agree to follow the rules from now on?',
+      'opmcheck_premium': [
+        'What is your Minecraft in-game username (IGN)?',
+        'What is your Discord user ID?',
+        'Which premium feature are you interested in?',
+        'Have you read the premium terms and conditions?',
       ],
       'bug_report': [
         'What bug did you encounter?',
         'What steps can we take to reproduce it?',
         'What device / client are you using?',
         'Can you provide screenshots or video?',
-      ],
-      'player_report': [
-        'Who are you reporting? (username)',
-        'What rule did they break?',
-        'When did this happen?',
-        'Do you have any evidence?',
       ],
       'staff_report': [
         'Which staff member are you reporting?',

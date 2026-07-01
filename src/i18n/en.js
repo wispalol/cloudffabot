@@ -208,19 +208,13 @@ module.exports = {
       desc: 'I have recorded all of your responses. Here is what happens next:\n\n• Your case has been logged in our system\n• A staff member will review it as soon as possible\n• You will be notified here when there is an update\n\n**If you need immediate assistance**, click the button below to request a staff member.\n**If you are satisfied**, you can close the ticket using the button at the top of this channel.',
     },
     help: {
-      ban_appeal: {
-        title: '🔨 Ban Appeal — What Happens Next',
-        desc: 'Thank you for submitting your ban appeal. Here is the process:\n\n**1. Review** — A staff member will review your appeal and the reason for your ban\n**2. Decision** — You will receive a response: Approved or Denied\n**3. Resolution** — If approved, your ban will be lifted\n\n**Tips for a successful appeal:**\n• Be honest and take responsibility where appropriate\n• Show that you understand the rule that was broken\n• Explain what you will do differently in the future\n\n{reason}\n\n⏱ Response time is typically within **24 hours**.',
-        field_important: '📌 Important',
-        field_important_value: 'Repeatedly pinging staff or creating multiple tickets may negatively affect your appeal.',
+      opmcheck_premium: {
+        title: '⚡ Opmcheck Premium — Next Steps',
+        desc: 'Thank you for your interest in Opmcheck Premium. Here is the process:\n\n**1. Verification** — A staff member will verify your request\n**2. Setup** — We will configure premium access for you\n**3. Confirmation** — You will receive confirmation once set up\n\n**What you get with Opmcheck Premium:**\n• Advanced anticheat lookup features\n• Priority support\n• Extended ban history and analytics\n\n⏱ Response time is typically within **24 hours**.',
       },
       bug_report: {
         title: '🐛 Bug Report — Next Steps',
         desc: 'Thank you for reporting this bug. Your report helps us improve the server.\n\n**What happens next:**\n• Your report is logged in our system\n• Our team will attempt to reproduce the bug\n• If confirmed, it will be added to our fix queue\n\n**To help us resolve this faster:**\n• If you have screenshots or video, please share them here\n• Note whether this happens consistently or randomly\n• Mention any steps we can follow to reproduce it\n\nYou will be updated here once we have more information.',
-      },
-      player_report: {
-        title: '👤 Player Report — Process',
-        desc: 'Thank you for submitting your report. Here is how it will be handled:\n\n**1. Review** — A moderator will review the evidence provided\n**2. Investigation** — The reported player may be contacted\n**3. Action** — If rules were broken, appropriate action will be taken\n\n⚠️ **Please note:**\n• False reports may result in action against your account\n• Do not share this report in public channels\n• You will be notified of the outcome',
       },
       general_support: {
         title: '❓ General Support — Resources',
@@ -254,25 +248,14 @@ module.exports = {
   },
 
   questions: {
-    ban_appeal: [
+    opmcheck_premium: [
       'What is your Minecraft in-game username (IGN)?',
-      'Why were you banned?',
-      'Why should your ban be lifted?',
-      'How long have you been on the server?',
-      'Do you agree to follow the rules from now on?',
-      'Is there anything else you would like to add about your situation?',
-      'How did you find out about our server?',
-      'What will you do differently if you are given a second chance?',
-    ],
-    ban_appeal_with_record: [
-      'What is your Minecraft in-game username (IGN)?',
-      'Do you admit to using **{hack}** on our server?',
-      'Why did you use it?',
-      'Do you understand that using unfair advantages is against the rules?',
-      'How long have you been on the server?',
-      'Do you agree to follow the rules from now on?',
+      'What is your Discord user ID?',
+      'Which premium feature are you interested in?',
+      'Have you read the premium terms and conditions?',
+      'Do you agree to the premium service rules?',
+      'How did you hear about Opmcheck Premium?',
       'Is there anything else you would like to add?',
-      'What will you do differently if given a second chance?',
     ],
     bug_report: [
       'What bug did you encounter? Please describe it in detail.',
@@ -283,15 +266,6 @@ module.exports = {
       'Does it happen every time or only sometimes?',
       'What error message (if any) did you see?',
       'Have you tried any troubleshooting steps already?',
-    ],
-    player_report: [
-      'Who are you reporting? (full Discord username)',
-      'What rule did they break?',
-      'When did this happen? (date and time)',
-      'Do you have any evidence? (screenshots, video, chat logs)',
-      'What channel did this happen in?',
-      'Have you had any issues with this player before?',
-      'How did this incident affect your experience on the server?',
     ],
     staff_report: [
       'Which staff member are you reporting?',

@@ -17,9 +17,8 @@ const path = require('path');
 const fs = require('fs');
 
 const TICKET_TYPES = [
-  { value: 'ban_appeal', label: 'Ban Appeal', emoji: '🔨' },
+  { value: 'opmcheck_premium', label: 'Opmcheck Premium', emoji: '⚡' },
   { value: 'bug_report', label: 'Bug Report', emoji: '🐛' },
-  { value: 'player_report', label: 'Player Report', emoji: '👤' },
   { value: 'general_support', label: 'General Support', emoji: '❓' },
   { value: 'purchase_support', label: 'Purchase Support', emoji: '💳' },
 ];

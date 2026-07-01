@@ -18,14 +18,9 @@ const FAQ_ENTRIES = [
     answer: 'You can view available ranks and purchase them at our store. Check **#store** or **#rank-info** for the link and details on perks.',
   },
   {
-    keywords: ['how do i report', 'report player', 'player report', 'report a player', 'report someone'],
-    category: 'Reporting',
-    answer: 'To report a player, open a **Player Report** ticket by clicking the button in **#tickets**. Please provide their username, the rule they broke, and any evidence you have.',
-  },
-  {
-    keywords: ['appeal', 'ban appeal', 'unban', 'how to appeal', 'appeal ban', 'banned'],
-    category: 'Ban Appeals',
-    answer: 'If you\'ve been banned and want to appeal, open a **Ban Appeal** ticket in **#tickets**. Be honest about your situation — our team will review it promptly.',
+    keywords: ['opmcheck', 'opmcheck premium', 'premium check', 'anticheat check', 'premium lookup'],
+    category: 'Opmcheck Premium',
+    answer: 'Interested in Opmcheck Premium? Open an **Opmcheck Premium** ticket in **#tickets** to get advanced anticheat lookup features, priority support, and extended ban analytics.',
   },
   {
     keywords: ['discord', 'discord server', 'invite', 'discord link'],

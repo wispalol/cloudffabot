@@ -57,9 +57,8 @@ function sanitizeChannelName(str) {
  */
 function getTicketTypeEmoji(type) {
   const emojis = {
-    ban_appeal: '🔨',
+    opmcheck_premium: '⚡',
     bug_report: '🐛',
-    player_report: '👤',
     staff_report: '🛡️',
     general_support: '❓',
     purchase_support: '💳',
@@ -76,9 +75,8 @@ function getTicketTypeEmoji(type) {
  */
 function getTicketTypeName(type) {
   const names = {
-    ban_appeal: 'Ban Appeal',
+    opmcheck_premium: 'Opmcheck Premium',
     bug_report: 'Bug Report',
-    player_report: 'Player Report',
     staff_report: 'Staff Report',
     general_support: 'General Support',
     purchase_support: 'Purchase Support',
