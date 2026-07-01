@@ -438,10 +438,10 @@ async function askNextQuestion(channel, member, type, ticketId, questions, index
           description: 'Thank you for your interest! I\'ve noted your information. A staff member will process your premium request shortly.\n\nPlease continue answering the remaining questions.',
           color: config.embed.color.success,
         })],
-        }
-      }
+      });
+    }
 
-      const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
+    const denialPhrases = ['didn\'t do', 'did not do', 'innocent', 'false ban', 'unfair', 'did nothing', 'wrongful', 'mistake', 'nie zrobiłem', 'niesłuszny', 'fałszywy', 'inocente', 'injusto'];
       const isDenial = denialPhrases.some((p) => answerText.toLowerCase().includes(p));
       if (isDenial && index < questions.length - 1) {
         await channel.send({
